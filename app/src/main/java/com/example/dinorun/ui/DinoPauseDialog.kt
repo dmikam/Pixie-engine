@@ -45,7 +45,8 @@ fun DinoPauseDialog(
     currentWorld: WorldDefinition,
     onSelectWorld: (WorldDefinition) -> Unit,
     onResume: () -> Unit,
-    onRestart: () -> Unit
+    onRestart: () -> Unit,
+    onExitToMenu: () -> Unit
 ) {
     val layers = layerStack.allLayers()
     val layerStates = remember {
@@ -246,6 +247,18 @@ fun DinoPauseDialog(
                     ) {
                         Text("Resume", color = Color.White, fontWeight = FontWeight.Bold)
                     }
+                }
+
+                Spacer(modifier = Modifier.height(10.dp))
+
+                OutlinedButton(
+                    onClick = onExitToMenu,
+                    border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFF37474F)),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .testTag("pause_menu_button")
+                ) {
+                    Text("Exit to Menu", color = Color(0xFF90A4AE))
                 }
             }
         }

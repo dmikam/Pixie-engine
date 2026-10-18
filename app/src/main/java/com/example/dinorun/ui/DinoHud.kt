@@ -19,6 +19,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.GridView
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.TouchApp
@@ -56,6 +57,7 @@ fun DinoHud(
     onToggleControlMode: () -> Unit,
     onTogglePixelGap: () -> Unit,
     onPauseClick: () -> Unit,
+    onExitToMenu: () -> Unit = {},
     inputAdapter: DualModeInputAdapter,
     modifier: Modifier = Modifier
 ) {
@@ -194,6 +196,21 @@ fun DinoHud(
                                 imageVector = Icons.Default.Pause,
                                 contentDescription = "Pause Game",
                                 tint = Color.White,
+                                modifier = Modifier.size(20.dp)
+                            )
+                        }
+
+                        // Exit to Menu Button
+                        IconButton(
+                            onClick = onExitToMenu,
+                            modifier = Modifier
+                                .size(36.dp)
+                                .testTag("exit_to_menu_button")
+                        ) {
+                            Icon(
+                                imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                                contentDescription = "Exit to Menu",
+                                tint = Color(0xFFB0BEC5),
                                 modifier = Modifier.size(20.dp)
                             )
                         }

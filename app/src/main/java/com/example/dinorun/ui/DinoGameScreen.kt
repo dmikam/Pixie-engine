@@ -17,12 +17,16 @@ import androidx.compose.ui.platform.LocalContext
 import com.example.dinorun.DinoGameCoordinator
 import com.pixie.android.audio.AndroidSoundPoolAudioAdapter
 import com.pixie.android.haptic.AndroidHapticAdapter
+import androidx.activity.compose.BackHandler
 import com.pixie.android.input.ControlMode
 import com.pixie.android.input.DualModeInputAdapter
 import com.pixie.android.ui.PixieGameCanvas
 
 @Composable
-fun DinoGameScreen(modifier: Modifier = Modifier) {
+fun DinoGameScreen(
+    modifier: Modifier = Modifier,
+    onExitToMenu: () -> Unit = {}
+) {
     val context = LocalContext.current
 
     // Initialize platform adapters
@@ -63,6 +67,11 @@ fun DinoGameScreen(modifier: Modifier = Modifier) {
             coordinator.engine.stop()
             audioAdapter.release()
         }
+    }
+
+    BackHandler {
+        coordinator.engine.pause()
+        onExitToMenu()
     }
 
     Box(
@@ -116,6 +125,10 @@ fun DinoGameScreen(modifier: Modifier = Modifier) {
                 isPaused = true
                 coordinator.engine.pause()
             },
+            onExitToMenu = {
+                coordinator.engine.pause()
+                onExitToMenu()
+            },
             inputAdapter = inputAdapter
         )
 
@@ -136,6 +149,11 @@ fun DinoGameScreen(modifier: Modifier = Modifier) {
                 onRestart = {
                     isPaused = false
                     coordinator.restart()
+                },
+                onExitToMenu = {
+                    isPaused = false
+                    coordinator.engine.pause()
+                    onExitToMenu()
                 }
             )
         }
@@ -149,6 +167,10 @@ fun DinoGameScreen(modifier: Modifier = Modifier) {
                 onRestart = {
                     coordinator.restart()
                     isGameOver = false
+                },
+                onExitToMenu = {
+                    coordinator.engine.pause()
+                    onExitToMenu()
                 }
             )
         }
