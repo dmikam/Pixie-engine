@@ -103,8 +103,16 @@ fun PixieGameCanvas(
             val _tick = frameTick
             drawIntoCanvas { composeCanvas ->
                 val nativeCanvas = composeCanvas.nativeCanvas
+                val count = nativeCanvas.save()
                 renderer.setupViewport(nativeCanvas, screenWidth, screenHeight)
+                nativeCanvas.clipRect(
+                    0f,
+                    0f,
+                    renderer.resolution.width.toFloat(),
+                    renderer.resolution.height.toFloat()
+                )
                 engine.render(renderer)
+                nativeCanvas.restoreToCount(count)
             }
         }
     }

@@ -1,5 +1,6 @@
 package com.pixie.engine
 
+import com.pixie.engine.core.PixieEngine
 import com.pixie.engine.core.camera.GameViewMode
 import com.pixie.engine.core.camera.PixieCamera
 import com.pixie.engine.core.color.ColorRecoveryPipeline
@@ -118,6 +119,7 @@ class PixieEngineTest {
             override val name = "Layer1"
             override val order = 100
             override var isEnabled = true
+            override var isGridEnabled = false
             override fun update(dt: Float, context: GameContext) { layer1Updated = true }
             override fun render(batch: RenderBatchPort, camera: PixieCamera, context: GameContext) {}
         }
@@ -126,6 +128,7 @@ class PixieEngineTest {
             override val name = "Layer2"
             override val order = 200
             override var isEnabled = false
+            override var isGridEnabled = false
             override fun update(dt: Float, context: GameContext) { layer2Updated = true }
             override fun render(batch: RenderBatchPort, camera: PixieCamera, context: GameContext) {}
         }
@@ -136,5 +139,76 @@ class PixieEngineTest {
         stack.update(0.016f, GameContext())
         assertTrue("Enabled layer should update", layer1Updated)
         assertFalse("Disabled layer should not update", layer2Updated)
+    }
+
+    @Test
+    fun testSkyLayerGradualShiftAndCelestialOrbit() {
+        val horizon = HorizonCoordinator(horizonY = 135f)
+        val sky = com.pixie.engine.core.layer.SkyLayer(
+            horizon = horizon,
+            celestialCenter = Vec2(160f, 140f),
+            celestialRadiusX = 145f,
+            celestialRadiusY = 110f,
+            riseAngleDeg = 150f,
+            setAngleDeg = 8f
+        )
+
+        // Test cycle progression update
+        sky.cycleProgress = 0.10f
+        sky.update(6f, GameContext()) // 6s / 60s = 0.10f progress
+        assertEquals(0.20f, sky.cycleProgress, 0.005f)
+
+        // Verify celestial properties are configurable
+        sky.celestialCenter = Vec2(170f, 130f)
+        assertEquals(170f, sky.celestialCenter.x, 0.001f)
+        assertTrue("starsFollowCelestialOrbit should be true by default", sky.starsFollowCelestialOrbit)
+        assertEquals(0.95f, sky.starsOrbitSpeedRatio, 0.001f)
+        assertTrue("starsMaxRadius should be at least 280f to cover farthest corners", sky.starsMaxRadius >= 280f)
+    }
+
+    @Test
+    fun testRenderPassesPixelsGapAndInvokesEndFrame() {
+        var endFrameInvoked = false
+        var batchPixelsGap = -1
+
+        val mockBatch = object : RenderBatchPort {
+            override val resolution: VirtualResolution = VirtualResolution(320, 180)
+            override var pixelsGap: Int = 0
+                set(value) {
+                    field = value
+                    batchPixelsGap = value
+                }
+            override var isCurrentLayerGridEnabled: Boolean = false
+
+            override fun fillBackground(color: Int) {}
+            override fun drawPixelRect(x: Float, y: Float, width: Float, height: Float, color: Int, saturation: Float, alpha: Float) {}
+            override fun drawSprite(sprite: PixelSprite, x: Float, y: Float, saturation: Float, alpha: Float) {}
+            override fun drawMotionBlur(sprite: PixelSprite, trail: List<Vec2>, strength: Float, saturation: Float) {}
+            override fun drawText(text: String, x: Float, y: Float, color: Int, sizePx: Float) {}
+            override fun endFrame() {
+                endFrameInvoked = true
+            }
+        }
+
+        val engine = PixieEngine(pixelsGap = 1)
+        engine.render(mockBatch)
+
+        assertEquals(1, batchPixelsGap)
+        assertTrue("endFrame should be called at the conclusion of engine.render", endFrameInvoked)
+    }
+
+    @Test
+    fun testLayerGridModeDefaults() {
+        val engine = PixieEngine()
+
+        // By default: Solid for sky, clouds, and ground
+        assertFalse("Sky should be solid by default", engine.skyLayer.isGridEnabled)
+        assertFalse("Clouds should be solid by default", engine.cloudLayer.isGridEnabled)
+        assertFalse("Ground should be solid by default", engine.groundLayer.isGridEnabled)
+
+        // By default: Grid enabled for background, objects & player, and foreground
+        assertTrue("Background should have grid enabled by default", engine.backgroundLayer.isGridEnabled)
+        assertTrue("Items/player should have grid enabled by default", engine.itemsLayer.isGridEnabled)
+        assertTrue("Foreground should have grid enabled by default", engine.foregroundLayer.isGridEnabled)
     }
 }

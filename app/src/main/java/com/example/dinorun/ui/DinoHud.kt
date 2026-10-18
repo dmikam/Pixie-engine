@@ -79,15 +79,25 @@ fun DinoHud(
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    // Distance & Score
+                    // Distance & Score & Version
                     Column {
-                        Text(
-                            text = "${distanceMeters.toInt()}m",
-                            color = Color(0xFFFFD54F),
-                            fontSize = 18.sp,
-                            fontWeight = FontWeight.Bold,
-                            fontFamily = FontFamily.Monospace
-                        )
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text(
+                                text = "${distanceMeters.toInt()}m",
+                                color = Color(0xFFFFD54F),
+                                fontSize = 18.sp,
+                                fontWeight = FontWeight.Bold,
+                                fontFamily = FontFamily.Monospace
+                            )
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text(
+                                text = "v0.3",
+                                color = Color(0xFFB0BEC5),
+                                fontSize = 10.sp,
+                                fontWeight = FontWeight.SemiBold,
+                                fontFamily = FontFamily.Monospace
+                            )
+                        }
                         Text(
                             text = "$score PTS",
                             color = Color.White,

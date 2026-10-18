@@ -19,7 +19,8 @@ import kotlin.math.min
  */
 class AndroidCanvasRenderer(
     override val resolution: VirtualResolution = VirtualResolution(320, 180),
-    override var pixelsGap: Int = 0
+    override var pixelsGap: Int = 0,
+    override var isCurrentLayerGridEnabled: Boolean = false
 ) : RenderBatchPort {
 
     var targetCanvas: Canvas? = null
@@ -27,8 +28,11 @@ class AndroidCanvasRenderer(
     var offsetX: Float = 0f
     var offsetY: Float = 0f
 
+    val isGridActive: Boolean
+        get() = pixelsGap > 0 && isCurrentLayerGridEnabled
+
     private val paint = Paint().apply {
-        isAntiAlias = false
+        isAntiAlias = true
         isFilterBitmap = false
         isDither = false
         style = Paint.Style.FILL
@@ -49,11 +53,16 @@ class AndroidCanvasRenderer(
         scale = min(scaleX, scaleY)
         offsetX = (screenWidth - resolution.width * scale) * 0.5f
         offsetY = (screenHeight - resolution.height * scale) * 0.5f
+
+        // Apply global scale factor to magnify 1x1 virtual unit blocks into chunky retro pixels
+        canvas.translate(offsetX, offsetY)
+        canvas.scale(scale, scale)
     }
 
     override fun fillBackground(color: Int) {
         val canvas = targetCanvas ?: return
-        canvas.drawColor(color)
+        paint.color = color
+        canvas.drawRect(0f, 0f, resolution.width.toFloat(), resolution.height.toFloat(), paint)
     }
 
     override fun drawPixelRect(
@@ -69,17 +78,44 @@ class AndroidCanvasRenderer(
         paint.color = applySaturationToColor(color, saturation)
         paint.alpha = (alpha.coerceIn(0f, 1f) * 255).toInt()
 
-        val rx = offsetX + x * scale
-        val ry = offsetY + y * scale
-        val rw = width * scale
-        val rh = height * scale
+        if (isGridActive && height >= 1f) {
+            val rows = height.toInt()
+            val full2DGrid = pixelsGap >= 2 && width >= 1f
 
-        if (pixelsGap <= 0) {
-            canvas.drawRect(rx, ry, rx + rw, ry + rh, paint)
+            if (full2DGrid) {
+                val cols = width.toInt()
+                for (r in 0 until rows) {
+                    val py = y + r
+                    for (c in 0 until cols) {
+                        val px = x + c
+                        canvas.drawRect(px, py, px + 1.0f, py + 1.0f, paint)
+                    }
+                }
+                val remH = height - rows
+                if (remH > 0.01f) {
+                    val py = y + rows
+                    for (c in 0 until cols) {
+                        val px = x + c
+                        canvas.drawRect(px, py, px + 1.0f, py + remH, paint)
+                    }
+                }
+            } else {
+                // Authentic Dinorun row-by-row ribbon slicing with exact 1-unit tall ribbons (no overlap).
+                // GPU anti-aliasing on fractional coordinates produces hairline sub-pixel rasterization seams.
+                for (r in 0 until rows) {
+                    val py = y + r
+                    canvas.drawRect(x, py, x + width, py + 1.0f, paint)
+                }
+                val remainder = height - rows
+                if (remainder > 0.01f) {
+                    canvas.drawRect(x, y + rows, x + width, y + rows + remainder, paint)
+                }
+            }
         } else {
-            // Retro grid gap effect
-            val gapPx = pixelsGap.toFloat()
-            canvas.drawRect(rx, ry, (rx + rw - gapPx).coerceAtLeast(rx + 1f), (ry + rh - gapPx).coerceAtLeast(ry + 1f), paint)
+            // Solid mode (e.g. sky, clouds, ground, or Solid toggle):
+            // Add +0.4f overlap (the "smoking gun" from drawParallaxScenery) to completely
+            // seal sub-pixel rasterization seams and render a solid, gap-free fill.
+            canvas.drawRect(x, y, x + width + 0.4f, y + height + 0.4f, paint)
         }
     }
 
@@ -93,23 +129,68 @@ class AndroidCanvasRenderer(
         val canvas = targetCanvas ?: return
         if (sprite == PixelSprite.EMPTY) return
 
-        val gap = pixelsGap.toFloat()
         paint.alpha = (alpha.coerceIn(0f, 1f) * 255).toInt()
 
-        for (py in 0 until sprite.height) {
-            val destY = offsetY + (y + py) * scale
-            for (px in 0 until sprite.width) {
-                val color = sprite.getPixel(px, py)
-                if ((color ushr 24) == 0) continue // Skip transparent pixels
+        if (isGridActive) {
+            // Authentic Dinorun rendering:
+            // Slices row by row into 1-unit tall ribbons (Size(runLength * pixelSize, pixelSize)) with NO overlap.
+            // Under fractional scaling, GPU anti-aliasing naturally produces microscopic
+            // sub-pixel boundary seams (hairline transparent bleed) between the rows.
+            // Pixels maintain their exact 1.0f virtual unit size (never shrunken).
+            val full2DGrid = pixelsGap >= 2
 
-                paint.color = applySaturationToColor(color, saturation)
-                val destX = offsetX + (x + px) * scale
-                val pixelSize = scale
+            for (py in 0 until sprite.height) {
+                val destY = y + py
+                var px = 0
+                while (px < sprite.width) {
+                    val color = sprite.getPixel(px, py)
+                    if ((color ushr 24) == 0) {
+                        px++
+                        continue
+                    }
 
-                if (gap <= 0f) {
-                    canvas.drawRect(destX, destY, destX + pixelSize, destY + pixelSize, paint)
-                } else {
-                    canvas.drawRect(destX, destY, destX + pixelSize - gap, destY + pixelSize - gap, paint)
+                    if (full2DGrid) {
+                        paint.color = applySaturationToColor(color, saturation)
+                        val destX = x + px
+                        canvas.drawRect(destX, destY, destX + 1.0f, destY + 1.0f, paint)
+                        px++
+                    } else {
+                        var runLength = 1
+                        while (px + runLength < sprite.width && sprite.getPixel(px + runLength, py) == color) {
+                            runLength++
+                        }
+
+                        paint.color = applySaturationToColor(color, saturation)
+                        val destX = x + px
+                        canvas.drawRect(destX, destY, destX + runLength.toFloat(), destY + 1.0f, paint)
+
+                        px += runLength
+                    }
+                }
+            }
+        } else {
+            // Solid mode:
+            // Horizontal runs with +0.4f overlap (the "smoking gun" from drawParallaxScenery)
+            // to seal the hairline rasterization seams, creating a clean solid pixel body.
+            for (py in 0 until sprite.height) {
+                val destY = y + py
+                var px = 0
+                while (px < sprite.width) {
+                    val color = sprite.getPixel(px, py)
+                    if ((color ushr 24) == 0) {
+                        px++
+                        continue
+                    }
+                    var runLength = 1
+                    while (px + runLength < sprite.width && sprite.getPixel(px + runLength, py) == color) {
+                        runLength++
+                    }
+
+                    paint.color = applySaturationToColor(color, saturation)
+                    val destX = x + px
+                    canvas.drawRect(destX, destY, destX + runLength.toFloat() + 0.4f, destY + 1.4f, paint)
+
+                    px += runLength
                 }
             }
         }
@@ -134,10 +215,12 @@ class AndroidCanvasRenderer(
     override fun drawText(text: String, x: Float, y: Float, color: Int, sizePx: Float) {
         val canvas = targetCanvas ?: return
         textPaint.color = color
-        textPaint.textSize = sizePx * scale
-        val destX = offsetX + x * scale
-        val destY = offsetY + y * scale
-        canvas.drawText(text, destX, destY, textPaint)
+        textPaint.textSize = sizePx
+        canvas.drawText(text, x, y, textPaint)
+    }
+
+    override fun endFrame() {
+        // Pixel rendering and gaps are applied cleanly in virtual coordinate space
     }
 
     private fun applySaturationToColor(color: Int, saturation: Float): Int {

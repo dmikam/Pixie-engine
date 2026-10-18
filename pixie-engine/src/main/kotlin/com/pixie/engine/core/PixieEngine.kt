@@ -133,6 +133,7 @@ class PixieEngine(
     fun render(batch: RenderBatchPort) {
         batch.pixelsGap = pixelsGap
         layerStack.render(batch, camera, context)
+        batch.endFrame()
     }
 
     fun resetGame() {

@@ -11,12 +11,14 @@ data class VirtualResolution(val width: Int, val height: Int)
 interface RenderBatchPort {
     val resolution: VirtualResolution
     var pixelsGap: Int
+    var isCurrentLayerGridEnabled: Boolean
 
     fun fillBackground(color: Int)
     fun drawPixelRect(x: Float, y: Float, width: Float, height: Float, color: Int, saturation: Float = 1f, alpha: Float = 1f)
     fun drawSprite(sprite: PixelSprite, x: Float, y: Float, saturation: Float = 1f, alpha: Float = 1f)
     fun drawMotionBlur(sprite: PixelSprite, trail: List<Vec2>, strength: Float, saturation: Float = 1f)
     fun drawText(text: String, x: Float, y: Float, color: Int, sizePx: Float = 8f)
+    fun endFrame() {}
 }
 
 /**

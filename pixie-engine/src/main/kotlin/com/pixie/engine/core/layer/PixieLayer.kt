@@ -18,6 +18,7 @@ interface PixieLayer {
     val name: String
     val order: Int
     var isEnabled: Boolean
+    var isGridEnabled: Boolean
 
     fun update(dt: Float, context: GameContext)
     fun render(batch: RenderBatchPort, camera: PixieCamera, context: GameContext)
@@ -46,6 +47,10 @@ class LayerStack(val horizon: HorizonCoordinator = HorizonCoordinator()) {
         getLayer(name)?.isEnabled = enabled
     }
 
+    fun setLayerGridEnabled(name: String, gridEnabled: Boolean) {
+        getLayer(name)?.isGridEnabled = gridEnabled
+    }
+
     fun update(dt: Float, context: GameContext) {
         for (i in 0 until layers.size) {
             val layer = layers[i]
@@ -59,6 +64,7 @@ class LayerStack(val horizon: HorizonCoordinator = HorizonCoordinator()) {
         for (i in 0 until layers.size) {
             val layer = layers[i]
             if (layer.isEnabled) {
+                batch.isCurrentLayerGridEnabled = layer.isGridEnabled
                 layer.render(batch, camera, context)
             }
         }

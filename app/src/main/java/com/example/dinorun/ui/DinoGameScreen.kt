@@ -49,7 +49,7 @@ fun DinoGameScreen(modifier: Modifier = Modifier) {
     var colorProgress by remember { mutableFloatStateOf(0f) }
     var fps by remember { mutableFloatStateOf(60f) }
     var currentControlMode by remember { mutableStateOf(ControlMode.VIRTUAL_BUTTONS) }
-    var pixelsGap by remember { mutableIntStateOf(0) }
+    var pixelsGap by remember { mutableIntStateOf(1) }
 
     coordinator.onStateChanged = {
         isGameOver = coordinator.engine.context.isGameOver
@@ -119,10 +119,16 @@ fun DinoGameScreen(modifier: Modifier = Modifier) {
             inputAdapter = inputAdapter
         )
 
-        // Pause Dialog with Layer Inspector
+        // Pause Dialog with Layer Inspector and World Switcher
         if (isPaused) {
             DinoPauseDialog(
                 layerStack = coordinator.engine.layerStack,
+                currentWorld = coordinator.currentWorld,
+                onSelectWorld = { world ->
+                    coordinator.switchWorld(world)
+                    isPaused = false
+                    coordinator.engine.resume()
+                },
                 onResume = {
                     isPaused = false
                     coordinator.engine.resume()

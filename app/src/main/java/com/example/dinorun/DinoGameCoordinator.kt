@@ -1,5 +1,7 @@
 package com.example.dinorun
 
+import com.example.dinorun.entities.DinoPlayer
+import com.example.dinorun.world.PrehistoricWorldDefinition
 import com.pixie.android.audio.AndroidSoundPoolAudioAdapter
 import com.pixie.android.haptic.AndroidHapticAdapter
 import com.pixie.android.input.DualModeInputAdapter
@@ -7,45 +9,57 @@ import com.pixie.android.render.AndroidCanvasRenderer
 import com.pixie.engine.core.PixieEngine
 import com.pixie.engine.core.camera.GameViewMode
 import com.pixie.engine.core.math.Vec2
-import com.pixie.engine.core.entity.PixieObject
 import com.pixie.engine.core.ports.AudioEvent
 import com.pixie.engine.core.ports.HapticFeedbackType
 import com.pixie.engine.core.ports.VirtualResolution
-import java.util.Random
+import com.pixie.engine.core.world.WorldDefinition
 
 /**
- * Coordinates the Dinorun proof-of-concept game on top of the Pixie Engine.
+ * Coordinates the Dinorun proof-of-concept game on top of the Pixie Engine,
+ * driven by modular [WorldDefinition] configurations and self-encapsulated entities.
  */
 class DinoGameCoordinator(
     val audioAdapter: AndroidSoundPoolAudioAdapter,
     val hapticAdapter: AndroidHapticAdapter,
-    val inputAdapter: DualModeInputAdapter
+    val inputAdapter: DualModeInputAdapter,
+    var currentWorld: WorldDefinition = PrehistoricWorldDefinition()
 ) {
-    val resolution = VirtualResolution(320, 180)
-    val renderer = AndroidCanvasRenderer(resolution = resolution, pixelsGap = 0)
+    val resolution = VirtualResolution(360, 200)
+    val renderer = AndroidCanvasRenderer(resolution = resolution, pixelsGap = 1)
 
     val engine = PixieEngine(
         virtualResolution = resolution,
         viewMode = GameViewMode.HorizontalScroller(lookAheadX = 65f, lockY = true, fixedY = 0f),
-        pixelsGap = 0,
+        pixelsGap = 1,
         audio = audioAdapter,
         haptics = hapticAdapter,
         input = inputAdapter
     )
 
-    private val random = Random(42)
     lateinit var player: DinoPlayer
-
     var onStateChanged: (() -> Unit)? = null
 
     init {
+        applyWorldConfiguration(currentWorld)
         setupGame()
     }
 
-    fun setupGame() {
-        val groundY = engine.horizon.horizonY
+    fun applyWorldConfiguration(world: WorldDefinition) {
+        currentWorld = world
+        engine.horizon.horizonY = world.horizonY
+        engine.skyLayer.dayNightCycleSeconds = world.dayNightCycleSeconds
+        engine.cloudLayer.windVelocity = world.windVelocity
 
-        // Create player
+        // Wire chunk procedural generation to the world definition
+        engine.chunkManager.chunkSpawner = { chunkIndex, startX, width, ctx ->
+            world.spawnChunkObjects(chunkIndex, startX, width, world.horizonY, ctx)
+        }
+    }
+
+    fun setupGame() {
+        val groundY = currentWorld.horizonY
+
+        // Create player from self-encapsulated entity
         player = DinoPlayer(
             initialPosition = Vec2(40f, groundY - 16f),
             groundY = groundY
@@ -53,75 +67,8 @@ class DinoGameCoordinator(
         engine.player = player
         engine.itemsLayer.addObject(player)
 
-        // Setup procedural chunk generation
-        engine.chunkManager.chunkSpawner = { chunkIndex, startX, width, ctx ->
-            generateChunkObjects(chunkIndex, startX, width, groundY, ctx)
-        }
-
-        // Initialize first chunks
+        // Initialize world chunk generator
         engine.chunkManager.reset(0f)
-    }
-
-    private fun generateChunkObjects(
-        chunkIndex: Int,
-        startX: Float,
-        width: Float,
-        groundY: Float,
-        ctx: com.pixie.engine.core.context.GameContext
-    ): List<PixieObject> {
-        val items = mutableListOf<PixieObject>()
-        if (chunkIndex <= 1) return items // Leave starting zone clear
-
-        val r = random
-        val density = ctx.calculateDifficultyMultiplier(1.0f, 0.05f)
-
-        // Ground Cactus Obstacle
-        val cactusCount = if (density > 1.4f && r.nextBoolean()) 2 else 1
-        var obstacleX = startX + 60f + r.nextFloat() * 80f
-        for (i in 0 until cactusCount) {
-            val isDouble = r.nextBoolean()
-            val cactus = CactusObstacle(
-                id = "cactus_${chunkIndex}_$i",
-                position = Vec2(obstacleX, groundY - 18f),
-                isDouble = isDouble
-            )
-            items.add(cactus)
-            obstacleX += 130f
-        }
-
-        // Flying Pterodactyl (at low altitude to duck under, or high to run under)
-        if (chunkIndex > 2 && r.nextFloat() < 0.65f) {
-            val isLow = r.nextBoolean()
-            val pteroY = if (isLow) groundY - 24f else groundY - 45f
-            val ptero = PterodactylHazard(
-                id = "ptero_$chunkIndex",
-                position = Vec2(startX + 180f + r.nextFloat() * 60f, pteroY),
-                speed = 40f
-            )
-            items.add(ptero)
-        }
-
-        // Color Energy Sparks (Pickups that restore color)
-        val sparkCount = if (r.nextFloat() < 0.8f) 2 else 1
-        for (i in 0 until sparkCount) {
-            val sparkY = groundY - 25f - r.nextFloat() * 25f
-            val spark = ColorSparkPickup(
-                id = "spark_${chunkIndex}_$i",
-                position = Vec2(startX + 40f + i * 90f, sparkY)
-            )
-            items.add(spark)
-        }
-
-        // Rare falling Volcanic Meteor
-        if (chunkIndex > 3 && r.nextFloat() < 0.35f) {
-            val meteor = VolcanicMeteor(
-                id = "meteor_$chunkIndex",
-                position = Vec2(startX + 220f, -20f)
-            )
-            items.add(meteor)
-        }
-
-        return items
     }
 
     fun updateInputs() {
@@ -155,10 +102,10 @@ class DinoGameCoordinator(
                     }
                     onStateChanged?.invoke()
                 } else if (obj.isInClass("pickup")) {
-                    // Collected color energy spark!
+                    // Collected color energy spark
                     hapticAdapter.trigger(HapticFeedbackType.LIGHT)
                     audioAdapter.playSound(AudioEvent.COLLECT)
-                    engine.colorRecovery.addProgress(0.12f)
+                    engine.colorRecovery.addProgress(0.15f)
                     engine.context.score += 50L
                     obj.isAlive = false
                     onStateChanged?.invoke()
@@ -166,13 +113,18 @@ class DinoGameCoordinator(
             }
         }
 
-        // Update distance & continuous score
+        // Distance and continuous score accumulation
         engine.context.distance = player.position.x / 10f
         engine.context.score = (engine.context.distance * 2f).toLong() + (engine.colorRecovery.progress * 500f).toLong()
     }
 
-    fun restart() {
+    fun switchWorld(world: WorldDefinition) {
+        restart(world)
+    }
+
+    fun restart(world: WorldDefinition = currentWorld) {
         engine.resetGame()
+        applyWorldConfiguration(world)
         setupGame()
         onStateChanged?.invoke()
     }
