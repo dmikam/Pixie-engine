@@ -1,0 +1,6 @@
+{
+  "name": "Pixie Engine",
+  "description": "Standalone 2D pixel-art game engine library with 5-layer parallax stack, ColorMatrix recovery, and proof-of-concept runner.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

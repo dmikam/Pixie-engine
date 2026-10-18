@@ -1,0 +1,6 @@
+{
+  "summary": "Complete implementation plan for the standalone 2D pixel-art game engine library (:core-engine pure Kotlin, :core-ui Android adapters) and Dinorun proof-of-concept client application (:app) featuring the 5-layer rendering stack with shared horizon, ColorMatrix grayscale-to-color recovery, and dual-mode controls.",
+  "updatedAt": "2026-10-17T10:17:39.639396363Z",
+  "requestFeedback": true,
+  "userFacing": true
+}
