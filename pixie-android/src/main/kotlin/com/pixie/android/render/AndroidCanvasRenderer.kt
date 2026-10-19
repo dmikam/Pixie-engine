@@ -202,13 +202,115 @@ class AndroidCanvasRenderer(
         strength: Float,
         saturation: Float
     ) {
-        if (trail.isEmpty()) return
+        val canvas = targetCanvas ?: return
+        if (trail.isEmpty() || sprite == PixelSprite.EMPTY || strength <= 0.01f) return
+
         val total = trail.size
         for (i in trail.indices) {
-            val factor = (i + 1).toFloat() / total
-            val alpha = factor * strength * 0.45f
+            // Index 0 is the newest position (closest to entity), index (total - 1) is oldest (furthest)
+            // Naturally fade to nothing along the trail with an exponential falloff curve:
+            val distanceRatio = (i + 1).toFloat() / (total + 1.2f)
+            val falloff = (1.0f - distanceRatio).coerceIn(0f, 1f)
+            val falloffCurve = falloff * falloff
+            val cloneAlpha = (falloffCurve * strength * 0.60f).coerceIn(0f, 1f)
+            if (cloneAlpha < 0.015f) continue
+
             val pos = trail[i]
-            drawSprite(sprite, pos.x, pos.y, saturation, alpha)
+
+            // Render ethereal velocity afterimage rather than a duplicate clone
+            renderMotionBlurGhost(
+                canvas = canvas,
+                sprite = sprite,
+                x = pos.x,
+                y = pos.y,
+                ghostIndex = i,
+                totalGhosts = total,
+                saturation = saturation,
+                alpha = cloneAlpha
+            )
+        }
+    }
+
+    private fun renderMotionBlurGhost(
+        canvas: Canvas,
+        sprite: PixelSprite,
+        x: Float,
+        y: Float,
+        ghostIndex: Int,
+        totalGhosts: Int,
+        saturation: Float,
+        alpha: Float
+    ) {
+        paint.alpha = (alpha.coerceIn(0f, 1f) * 255).toInt()
+
+        for (py in 0 until sprite.height) {
+            val destY = y + py
+            for (px in 0 until sprite.width) {
+                val color = sprite.getPixel(px, py)
+                val pixelAlpha = (color ushr 24) and 0xFF
+                if (pixelAlpha == 0) continue
+
+                // 1. Natural pixel dissolution along the trail:
+                // Lagging ghosts progressively dissolve in density, transforming from solid
+                // afterimage into disintegrating speed particles fading into thin air.
+                when {
+                    ghostIndex == 0 -> {
+                        // Nearest ghost: Full silhouette intact
+                    }
+                    ghostIndex == 1 -> {
+                        // Gentle edge softening (drops 20% of pixels in organic scatter)
+                        if ((px * 3 + py * 5) % 5 == 0) continue
+                    }
+                    ghostIndex == 2 -> {
+                        // Retro checkerboard dissolution (50% density)
+                        if ((px + py) % 2 != 0) continue
+                    }
+                    else -> {
+                        // Sparse dissolving particle mist (25% density)
+                        if ((px * 7 + py * 13) % 4 != 0) continue
+                    }
+                }
+
+                // 2. Stylized ethereal ghost shading ("not being just the same clone"):
+                // Unify harsh high-contrast facial accents (e.g. eyes and pupils) into the
+                // velocity silhouette so the afterimage behaves as an energetic speed streak.
+                val r = (color ushr 16) and 0xFF
+                val g = (color ushr 8) and 0xFF
+                val b = color and 0xFF
+                val luma = 0.299f * r + 0.587f * g + 0.114f * b
+
+                val ghostR: Int
+                val ghostG: Int
+                val ghostB: Int
+
+                if (luma > 220f) {
+                    // Soften stark eye whites into a gentle luminous aura
+                    ghostR = (r * 0.50f + 60f).toInt().coerceIn(0, 255)
+                    ghostG = (g * 0.65f + 90f).toInt().coerceIn(0, 255)
+                    ghostB = (b * 0.50f + 60f).toInt().coerceIn(0, 255)
+                } else if (luma < 30f) {
+                    // Lift pitch black pupils into soft silhouette shading
+                    ghostR = (r + 45).coerceIn(0, 255)
+                    ghostG = (g + 80).coerceIn(0, 255)
+                    ghostB = (b + 55).coerceIn(0, 255)
+                } else {
+                    // Ethereal speed aura: older ghosts subtly shift toward cool spectral luminescence
+                    val shift = (ghostIndex.toFloat() / (totalGhosts.coerceAtLeast(1))).coerceIn(0f, 1f)
+                    ghostR = (r * (1f - shift * 0.2f) + 40f * shift * 0.2f).toInt().coerceIn(0, 255)
+                    ghostG = (g * (1f - shift * 0.1f) + 210f * shift * 0.1f).toInt().coerceIn(0, 255)
+                    ghostB = (b * (1f - shift * 0.3f) + 180f * shift * 0.3f).toInt().coerceIn(0, 255)
+                }
+
+                val ghostColor = Color.argb(pixelAlpha, ghostR, ghostG, ghostB)
+                paint.color = applySaturationToColor(ghostColor, saturation)
+
+                val destX = x + px
+                if (isGridActive) {
+                    canvas.drawRect(destX, destY, destX + 1.0f, destY + 1.0f, paint)
+                } else {
+                    canvas.drawRect(destX, destY, destX + 1.4f, destY + 1.4f, paint)
+                }
+            }
         }
     }
 

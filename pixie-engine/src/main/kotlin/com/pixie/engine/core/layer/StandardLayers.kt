@@ -417,6 +417,10 @@ class GameItemsLayer(
         objects.remove(obj)
     }
 
+    fun removeObject(id: String) {
+        objects.removeAll { it.id == id }
+    }
+
     fun clear() {
         objects.clear()
     }
@@ -450,10 +454,13 @@ class GameItemsLayer(
             val sprite = obj.getCurrentSprite()
             val saturation = obj.resolveSaturation(context.colorRecoveryProgress)
 
-            // Render motion blur trail if enabled for this object or object group
-            if (obj.motionBlur.enabled && obj.trailHistory.isNotEmpty()) {
-                val screenTrail = obj.trailHistory.map { camera.worldToScreen(it) }
-                batch.drawMotionBlur(sprite, screenTrail, obj.motionBlur.strength, saturation)
+            // Render motion blur trail if active or naturally fading out
+            if (obj.trailHistory.isNotEmpty()) {
+                val effectiveStrength = obj.motionBlur.strength * obj.trailFadeAlpha
+                if (effectiveStrength > 0.01f) {
+                    val screenTrail = obj.trailHistory.map { camera.worldToScreen(it) }
+                    batch.drawMotionBlur(sprite, screenTrail, effectiveStrength, saturation)
+                }
             }
 
             // Render current sprite

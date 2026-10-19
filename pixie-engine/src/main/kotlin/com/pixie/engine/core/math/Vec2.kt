@@ -14,6 +14,7 @@ data class Vec2(val x: Float = 0f, val y: Float = 0f) {
     operator fun div(scalar: Float): Vec2 = if (scalar != 0f) Vec2(x / scalar, y / scalar) else ZERO
 
     fun length(): Float = sqrt(x * x + y * y)
+    fun lengthSquared(): Float = x * x + y * y
 
     fun normalized(): Vec2 {
         val len = length()

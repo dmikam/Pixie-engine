@@ -54,8 +54,8 @@ class DinoPlayer(
             velocity = Vec2(velocity.x, jumpPower)
             isGrounded = false
             playAnimation("jump")
-            // Leaping activates speed trail motion blur
-            motionBlur = MotionBlurConfig(enabled = true, strength = 0.5f, maxTrailSamples = 3)
+            // Leaping activates speed trail motion blur with natural dissolution
+            motionBlur = MotionBlurConfig(enabled = true, strength = 0.65f, maxTrailSamples = 4)
         }
     }
 

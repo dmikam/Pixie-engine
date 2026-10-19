@@ -18,11 +18,13 @@ import androidx.compose.ui.graphics.Color
 import com.example.dinorun.ui.DinoGameScreen
 import com.example.menu.ui.GameSelectorScreen
 import com.example.menu.ui.RoadmapScreen
+import com.example.raptor.ui.RaptorGameScreen
 import com.example.ui.theme.MyApplicationTheme
 
 enum class AppScreen {
     MENU,
     DINORUN,
+    RAPTOR,
     ROADMAP
 }
 
@@ -52,6 +54,7 @@ fun PixieApp() {
             AppScreen.MENU -> {
                 GameSelectorScreen(
                     onLaunchDinorun = { currentScreen = AppScreen.DINORUN },
+                    onLaunchRaptor = { currentScreen = AppScreen.RAPTOR },
                     onOpenRoadmap = { currentScreen = AppScreen.ROADMAP }
                 )
             }
@@ -60,13 +63,19 @@ fun PixieApp() {
                     onExitToMenu = { currentScreen = AppScreen.MENU }
                 )
             }
+            AppScreen.RAPTOR -> {
+                RaptorGameScreen(
+                    onExitToMenu = { currentScreen = AppScreen.MENU }
+                )
+            }
             AppScreen.ROADMAP -> {
                 BackHandler { currentScreen = AppScreen.MENU }
                 RoadmapScreen(
                     onBack = { currentScreen = AppScreen.MENU },
                     onLaunchGame = { gameId ->
-                        if (gameId == "dinorun") {
-                            currentScreen = AppScreen.DINORUN
+                        when (gameId) {
+                            "dinorun" -> currentScreen = AppScreen.DINORUN
+                            "raptor" -> currentScreen = AppScreen.RAPTOR
                         }
                     }
                 )

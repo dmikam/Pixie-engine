@@ -31,8 +31,8 @@ import kotlinx.coroutines.isActive
 @Composable
 fun PixieGameCanvas(
     engine: PixieEngine,
-    renderer: AndroidCanvasRenderer,
-    inputAdapter: DualModeInputAdapter,
+    renderer: AndroidCanvasRenderer = remember(engine) { AndroidCanvasRenderer(engine.virtualResolution) },
+    inputAdapter: DualModeInputAdapter? = null,
     modifier: Modifier = Modifier,
     onFrameTick: ((deltaSeconds: Float) -> Unit)? = null
 ) {
@@ -60,9 +60,9 @@ fun PixieGameCanvas(
         val screenWidth = constraints.maxWidth.toFloat()
         val screenHeight = constraints.maxHeight.toFloat()
 
-        Canvas(
-            modifier = Modifier
-                .fillMaxSize()
+        var canvasModifier = Modifier.fillMaxSize()
+        if (inputAdapter != null) {
+            canvasModifier = canvasModifier
                 .pointerInput(inputAdapter.currentMode) {
                     if (inputAdapter.currentMode == ControlMode.TOUCH_GESTURES) {
                         detectTapGestures(
@@ -98,7 +98,9 @@ fun PixieGameCanvas(
                         )
                     }
                 }
-        ) {
+        }
+
+        Canvas(modifier = canvasModifier) {
             // Reading frameTick triggers Compose to execute this draw block on every frame
             val _tick = frameTick
             drawIntoCanvas { composeCanvas ->

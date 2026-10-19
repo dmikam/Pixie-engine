@@ -48,6 +48,8 @@ class PixieEngine(
     val backgroundLayer = BackgroundParallaxLayer(horizon = horizon)
     val groundLayer = GroundGamefieldLayer(horizon = horizon)
     val itemsLayer = GameItemsLayer()
+    val particleLayer = com.pixie.engine.core.particle.ParticleLayer()
+    val projectilePool = com.pixie.engine.core.weapon.ProjectilePool()
     val foregroundLayer = ForegroundParallaxLayer()
 
     var player: PixieObject? = null
@@ -61,12 +63,13 @@ class PixieEngine(
     )
 
     init {
-        // Register default 5-layer stack + foreground layer
+        // Register default layers: environment -> ground -> items -> particles -> foreground
         layerStack.addLayer(skyLayer)
         layerStack.addLayer(cloudLayer)
         layerStack.addLayer(backgroundLayer)
         layerStack.addLayer(groundLayer)
         layerStack.addLayer(itemsLayer)
+        layerStack.addLayer(particleLayer)
         layerStack.addLayer(foregroundLayer)
     }
 
@@ -145,6 +148,8 @@ class PixieEngine(
         context.livesLeft = 3
         colorRecovery.reset(0f)
         itemsLayer.clear()
+        particleLayer.clear()
+        projectilePool.clear()
         chunkManager.reset(0f)
         camera.setPositionImmediate(com.pixie.engine.core.math.Vec2.ZERO)
         loop.reset()

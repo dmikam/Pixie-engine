@@ -67,6 +67,7 @@ open class PixieObject(
     // Motion blur configuration and trail history
     var motionBlur: MotionBlurConfig = MotionBlurConfig()
     val trailHistory = ArrayDeque<Vec2>()
+    var trailFadeAlpha: Float = 1.0f
 
     // Context-dependent parameters (speed, jumpForce, damage, health, etc.)
     val parameters: MutableMap<String, Float> = mutableMapOf()
@@ -130,12 +131,18 @@ open class PixieObject(
 
         // Motion blur history
         if (motionBlur.enabled) {
+            trailFadeAlpha = 1.0f
             trailHistory.addFirst(position)
             while (trailHistory.size > motionBlur.maxTrailSamples) {
                 trailHistory.removeLast()
             }
         } else if (trailHistory.isNotEmpty()) {
-            trailHistory.clear()
+            // Naturally fade remaining trailing clones to zero rather than abruptly disappearing
+            trailFadeAlpha = (trailFadeAlpha - dt * 5.0f).coerceAtLeast(0f)
+            if (trailFadeAlpha <= 0f) {
+                trailHistory.clear()
+                trailFadeAlpha = 1.0f
+            }
         }
 
         // Apply basic velocity integration

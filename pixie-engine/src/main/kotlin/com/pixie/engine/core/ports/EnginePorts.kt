@@ -32,7 +32,13 @@ enum class AudioEvent {
     SCORE_MILESTONE,
     GAME_OVER,
     BUTTON_CLICK,
-    DAY_NIGHT_SHIFT
+    DAY_NIGHT_SHIFT,
+    FIRE_PRIMARY,
+    FIRE_MISSILE,
+    EXPLOSION_SMALL,
+    EXPLOSION_LARGE,
+    SHIELD_HIT,
+    POWERUP_PICKUP
 }
 
 interface AudioPort {

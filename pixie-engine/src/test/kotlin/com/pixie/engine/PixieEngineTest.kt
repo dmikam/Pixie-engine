@@ -105,6 +105,17 @@ class PixieEngineTest {
         obj.update(0.016f, context)
 
         assertEquals(2, obj.trailHistory.size)
+        assertEquals(1.0f, obj.trailFadeAlpha, 0.001f)
+
+        // Test smooth fade out when disabled (does not abruptly vanish)
+        obj.motionBlur = MotionBlurConfig(enabled = false)
+        obj.update(0.05f, context)
+        assertTrue("Trail alpha should decay gracefully", obj.trailFadeAlpha < 1.0f && obj.trailFadeAlpha > 0f)
+        assertTrue("Trail history remains during fade-out", obj.trailHistory.isNotEmpty())
+
+        // Update until fully faded out to nothing
+        obj.update(0.25f, context)
+        assertEquals(0, obj.trailHistory.size)
     }
 
     @Test
@@ -210,5 +221,294 @@ class PixieEngineTest {
         assertTrue("Background should have grid enabled by default", engine.backgroundLayer.isGridEnabled)
         assertTrue("Items/player should have grid enabled by default", engine.itemsLayer.isGridEnabled)
         assertTrue("Foreground should have grid enabled by default", engine.foregroundLayer.isGridEnabled)
+    }
+
+    @Test
+    fun testContinuousIntegerDifficultyAndPresets() {
+        val context = GameContext()
+        // Default is 25 (Medium)
+        assertEquals(25, context.difficulty)
+        assertEquals(0.25f, context.normalizedDifficulty, 0.001f)
+        assertEquals(1.0f, context.difficultyLevel, 0.001f)
+
+        // Clamping to 0..100
+        context.difficulty = 150
+        assertEquals(100, context.difficulty)
+        assertEquals(1.0f, context.normalizedDifficulty, 0.001f)
+
+        context.difficulty = -50
+        assertEquals(0, context.difficulty)
+        assertEquals(0.0f, context.normalizedDifficulty, 0.001f)
+
+        // Presets verification
+        assertEquals(10, com.pixie.engine.core.context.DifficultyPreset.EASY.difficultyValue)
+        assertEquals(25, com.pixie.engine.core.context.DifficultyPreset.MEDIUM.difficultyValue)
+        assertEquals(50, com.pixie.engine.core.context.DifficultyPreset.DIFFICULT.difficultyValue)
+        assertEquals(100, com.pixie.engine.core.context.DifficultyPreset.HEAVY_METAL.difficultyValue)
+
+        context.difficulty = com.pixie.engine.core.context.DifficultyPreset.HEAVY_METAL.difficultyValue
+        assertEquals(100, context.difficulty)
+        assertEquals(4.0f, context.difficultyLevel, 0.001f)
+    }
+
+    @Test
+    fun testDynamicPropertyCalculationWithContextFactors() {
+        val context = GameContext(
+            currentLevel = 1,
+            livesLeft = 3
+        ).apply {
+            difficulty = 25 // standard baseline (0.25 normalized)
+        }
+
+        val baseSpeed = 100f
+        val calculatedStandard = context.calculateDynamicProperty(baseSpeed)
+        assertEquals(100f, calculatedStandard, 0.01f)
+
+        // Scaling with higher difficulty (e.g. Heavy Metal = 100 -> diffRatio = 1.0)
+        context.difficulty = 100
+        val heavyMetalSpeed = context.calculateDynamicProperty(baseSpeed, difficultyWeight = 0.8f)
+        assertTrue("Heavy metal difficulty should scale property higher", heavyMetalSpeed > baseSpeed)
+
+        // Scaling with progression level (e.g. Level 3)
+        context.currentLevel = 3
+        val level3Speed = context.calculateDynamicProperty(baseSpeed, levelWeight = 0.2f)
+        assertTrue("Higher level should increase calculated property", level3Speed > heavyMetalSpeed)
+
+        // Scaling with active perk
+        context.addPerk("OVERCLOCK")
+        assertTrue(context.hasPerk("OVERCLOCK"))
+        val perkBonus = if (context.hasPerk("OVERCLOCK")) 1.5f else 1.0f
+        val overclockedSpeed = context.calculateDynamicProperty(baseSpeed, perkBonus = perkBonus)
+        assertTrue("Perk should boost calculated property by 50%", overclockedSpeed > level3Speed)
+
+        // Lives pressure factor (rubber-banding buff when at 1 life left)
+        context.livesLeft = 1
+        val criticalLifePower = context.calculateDynamicProperty(baseSpeed, perkBonus = perkBonus, livesInfluence = 0.15f)
+        assertTrue("Critical life should trigger survival factor boost", criticalLifePower > overclockedSpeed)
+    }
+
+    @Test
+    fun testZeroAllocationPixiePool() {
+        var createCount = 0
+        class MockBullet : com.pixie.engine.core.pool.Poolable {
+            var active = false
+            override fun reset() { active = false }
+        }
+
+        val pool = com.pixie.engine.core.pool.PixiePool(initialCapacity = 10, maxCapacity = 50) {
+            createCount++
+            MockBullet()
+        }
+
+        assertEquals(10, pool.freeCount)
+        assertEquals(10, createCount)
+
+        // Obtain items
+        val b1 = pool.obtain()
+        val b2 = pool.obtain()
+        b1.active = true
+        b2.active = true
+        assertEquals(8, pool.freeCount)
+
+        // Recycle b1
+        pool.recycle(b1)
+        assertFalse("Recycled bullet should be reset", b1.active)
+        assertEquals(9, pool.freeCount)
+
+        // Recycle b2
+        pool.recycle(b2)
+        assertEquals(10, pool.freeCount)
+    }
+
+    @Test
+    fun testParticleLifecycleAndProceduralExplosions() {
+        val pool = com.pixie.engine.core.particle.ParticlePool(initialCapacity = 30)
+        val activeParticles = mutableListOf<com.pixie.engine.core.particle.Particle>()
+
+        // Trigger procedural spark hit
+        com.pixie.engine.core.particle.ProceduralExplosion.trigger(
+            type = com.pixie.engine.core.particle.ExplosionType.SPARK_HIT,
+            position = Vec2(50f, 50f),
+            pool = pool,
+            activeList = activeParticles,
+            scale = 1.0f
+        )
+        assertTrue("Sparks should be spawned", activeParticles.isNotEmpty())
+        val initialCount = activeParticles.size
+
+        // Update physics and verify lifespan progression
+        for (p in activeParticles) {
+            assertTrue("Particle should be alive", p.isAlive)
+        }
+
+        // Advance time until particles expire
+        val deadParticles = mutableListOf<com.pixie.engine.core.particle.Particle>()
+        for (p in activeParticles) {
+            val alive = p.update(0.5f)
+            if (!alive) deadParticles.add(p)
+        }
+        assertEquals(initialCount, deadParticles.size)
+
+        // Recycle all back to pool
+        pool.recycleAll(deadParticles)
+        assertEquals(30, pool.freeCount)
+    }
+
+    @Test
+    fun testParticleLayerInPixieEngine() {
+        val engine = PixieEngine()
+        assertTrue("Engine should contain particleLayer", engine.layerStack.getLayer("Layer_Particles") != null)
+        assertEquals(550, engine.particleLayer.order)
+
+        // Spawn explosion via engine's particleLayer
+        engine.particleLayer.spawnExplosion(
+            type = com.pixie.engine.core.particle.ExplosionType.PLASMA_BURST,
+            position = Vec2(100f, 100f)
+        )
+        assertTrue(engine.particleLayer.activeParticles.size > 0)
+
+        // Test engine reset clears particles
+        engine.resetGame()
+        assertEquals(0, engine.particleLayer.activeParticles.size)
+    }
+
+    @Test
+    fun testWeaponDefinitionDynamicCalculations() {
+        val vulcan = com.pixie.engine.core.weapon.StandardWeapons.VULCAN_CANNON
+        val context = GameContext(currentLevel = 1).apply { difficulty = 25 }
+
+        val standardDamage = vulcan.calculateDynamicHitPower(context, isPlayerWeapon = true)
+        val standardRate = vulcan.calculateDynamicFireRate(context, isPlayerWeapon = true)
+
+        assertEquals(12f, standardDamage, 0.01f)
+        assertEquals(7f, standardRate, 0.01f)
+
+        // Add OVERCLOCK perk
+        context.addPerk("OVERCLOCK")
+        val overclockedDamage = vulcan.calculateDynamicHitPower(context, isPlayerWeapon = true)
+        assertTrue("OVERCLOCK should increase damage", overclockedDamage > standardDamage)
+
+        // Add RAPID_FIRE perk
+        context.addPerk("RAPID_FIRE")
+        val rapidFireRate = vulcan.calculateDynamicFireRate(context, isPlayerWeapon = true)
+        assertTrue("RAPID_FIRE should increase rate of fire", rapidFireRate > standardRate)
+    }
+
+    @Test
+    fun testProjectileSpawnAndTrajectories() {
+        val pool = com.pixie.engine.core.weapon.ProjectilePool(initialCapacity = 10)
+        val proj = pool.obtain()
+        val vulcan = com.pixie.engine.core.weapon.StandardWeapons.VULCAN_CANNON
+
+        // 1. Linear trajectory straight up
+        val linearTraj = com.pixie.engine.core.weapon.Trajectory.Linear(-1.5707963f)
+        proj.spawn(
+            pos = Vec2(100f, 100f),
+            definition = vulcan,
+            isPlayer = true,
+            traj = linearTraj,
+            speed = 200f,
+            damage = 15f
+        )
+        assertTrue(proj.isAlive)
+        assertEquals(15f, proj.hitPower, 0.001f)
+
+        // Update step
+        proj.update(0.1f, GameContext())
+        assertTrue("Projectile should have moved upward", proj.position.y < 100f)
+
+        // 2. Homing trajectory steering toward target
+        val target = PixieObject("target", position = Vec2(150f, 50f))
+        val homingTraj = com.pixie.engine.core.weapon.Trajectory.Homing(
+            target = target,
+            turnRateRadPerSec = 5.0f,
+            currentHeadingRad = -1.5707963f // pointing straight up initially
+        )
+        val homingProj = pool.obtain()
+        homingProj.spawn(
+            pos = Vec2(100f, 100f),
+            definition = com.pixie.engine.core.weapon.StandardWeapons.HOMING_MISSILES,
+            isPlayer = true,
+            traj = homingTraj,
+            speed = 200f,
+            damage = 35f
+        )
+
+        // After updating, heading should turn right toward target (x=150, y=50)
+        homingProj.update(0.1f, GameContext())
+        assertTrue("Homing velocity x should be positive heading toward target", homingProj.velocity.x > 0f)
+
+        // Clean up
+        pool.recycle(proj)
+        pool.recycle(homingProj)
+    }
+
+    @Test
+    fun testWeaponSystemCooldownAndMultiShot() {
+        val pool = com.pixie.engine.core.weapon.ProjectilePool(initialCapacity = 20)
+        val weaponSys = com.pixie.engine.core.weapon.WeaponSystem(
+            weapon = com.pixie.engine.core.weapon.StandardWeapons.TWIN_PLASMA,
+            pool = pool,
+            isPlayer = true
+        )
+        weaponSys.shotCount = 2 // Twin shot
+
+        val spawned = mutableListOf<com.pixie.engine.core.weapon.Projectile>()
+        val fired1 = weaponSys.fire(
+            origin = Vec2(100f, 100f),
+            headingRad = -1.5707963f,
+            context = GameContext(),
+            outList = spawned
+        )
+        assertTrue("First fire should succeed", fired1)
+        assertEquals(2, spawned.size)
+        assertTrue("Cooldown should be active", weaponSys.cooldownTimer > 0f)
+
+        // Immediate second fire must fail due to cooldown
+        val firedImmediate = weaponSys.fire(
+            origin = Vec2(100f, 100f),
+            headingRad = -1.5707963f,
+            context = GameContext(),
+            outList = spawned
+        )
+        assertFalse("Immediate second fire should be blocked by cooldown", firedImmediate)
+
+        // Advance time to expire cooldown
+        weaponSys.update(0.5f)
+        assertEquals(0f, weaponSys.cooldownTimer, 0.001f)
+        val firedAfterCooldown = weaponSys.fire(
+            origin = Vec2(100f, 100f),
+            headingRad = -1.5707963f,
+            context = GameContext(),
+            outList = spawned
+        )
+        assertTrue("Fire after cooldown should succeed", firedAfterCooldown)
+        assertEquals(4, spawned.size)
+
+        // Recycle all
+        pool.recycleAll(spawned)
+    }
+
+    @Test
+    fun testProjectileImpactAndProceduralExplosion() {
+        val pool = com.pixie.engine.core.weapon.ProjectilePool(initialCapacity = 5)
+        val particleLayer = com.pixie.engine.core.particle.ParticleLayer()
+        val proj = pool.obtain()
+        proj.spawn(
+            pos = Vec2(50f, 50f),
+            definition = com.pixie.engine.core.weapon.StandardWeapons.TWIN_PLASMA,
+            isPlayer = true,
+            traj = com.pixie.engine.core.weapon.Trajectory.Linear(-1.57f),
+            speed = 200f,
+            damage = 18f,
+            pierce = 1
+        )
+
+        // On impact
+        proj.onImpact(proj.position, particleLayer)
+        assertFalse("Single-pierce bullet should die on impact", proj.isAlive)
+        assertTrue("Impact should trigger particles", particleLayer.activeParticles.size > 0)
+
+        pool.recycle(proj)
     }
 }

@@ -65,6 +65,7 @@ import com.example.menu.model.PocGameRegistry
 @Composable
 fun GameSelectorScreen(
     onLaunchDinorun: () -> Unit,
+    onLaunchRaptor: () -> Unit,
     onOpenRoadmap: () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -189,10 +190,10 @@ fun GameSelectorScreen(
                     game = game,
                     pulseAlpha = if (game.status == GameStatus.PLAYABLE) pulseAlpha else 1f,
                     onPlay = {
-                        if (game.id == "dinorun") {
-                            onLaunchDinorun()
-                        } else {
-                            selectedGameForDetails = game
+                        when (game.id) {
+                            "dinorun" -> onLaunchDinorun()
+                            "raptor" -> onLaunchRaptor()
+                            else -> selectedGameForDetails = game
                         }
                     },
                     onViewDetails = {
@@ -242,8 +243,9 @@ fun GameSelectorScreen(
                 onDismiss = { selectedGameForDetails = null },
                 onLaunchPlay = {
                     selectedGameForDetails = null
-                    if (game.id == "dinorun") {
-                        onLaunchDinorun()
+                    when (game.id) {
+                        "dinorun" -> onLaunchDinorun()
+                        "raptor" -> onLaunchRaptor()
                     }
                 },
                 onOpenRoadmap = {

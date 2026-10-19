@@ -36,7 +36,7 @@ class ExampleRobolectricTest {
         val raptor = PocGameRegistry.getById("raptor")
         assertNotNull(raptor)
         assertEquals("Raptor", raptor?.title)
-        assertEquals(GameStatus.NEXT_UP, raptor?.status)
+        assertEquals(GameStatus.PLAYABLE, raptor?.status)
         assertEquals("Vertical Scroller", raptor?.paradigm)
 
         val arkanoid = PocGameRegistry.getById("arkanoid")
@@ -50,5 +50,29 @@ class ExampleRobolectricTest {
         assertEquals("Chiki", chiki?.title)
         assertEquals(GameStatus.PLANNED, chiki?.status)
         assertEquals("Classic Platformer", chiki?.paradigm)
+    }
+
+    @Test
+    fun `raptor coordinator initializes with continuous difficulty and fires weapons`() {
+        val coordinator = com.example.raptor.RaptorGameCoordinator(
+            selectedDifficulty = com.pixie.engine.core.context.DifficultyPreset.DIFFICULT,
+            currentLevelIndex = 1
+        )
+
+        assertEquals(50, coordinator.engine.context.difficulty)
+        assertEquals(1, coordinator.currentLevelIndex)
+        assertEquals(100f, coordinator.playerShip.hull, 0.001f)
+        assertEquals(100f, coordinator.playerShip.shield, 0.001f)
+
+        // Test primary weapon fire
+        val bullets = mutableListOf<com.pixie.engine.core.weapon.Projectile>()
+        val fired = coordinator.playerShip.firePrimary(coordinator.engine.context, bullets)
+        org.junit.Assert.assertTrue("Primary fire should succeed", fired)
+        org.junit.Assert.assertTrue("Bullet spawned", bullets.isNotEmpty())
+
+        // Test secondary missiles
+        val initialMissiles = coordinator.playerShip.missileSalvoes
+        coordinator.fireSecondaryMissiles()
+        assertEquals(initialMissiles - 1, coordinator.playerShip.missileSalvoes)
     }
 }

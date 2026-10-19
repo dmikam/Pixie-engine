@@ -46,7 +46,7 @@ To validate the engine across diverse 2D game paradigms, we are developing 4 dis
 
 ## 2. 🚀 Raptor (Vertical Arcade Scroller)
 - **Genre:** Vertical Top-Down Arcade Shoot 'em Up (Shmup)
-- **Current Status:** `IN QUEUE - NEXT UP`
+- **Current Status:** `ACTIVE IMPLEMENTATION (Phase 1) - See [DOCS/raptor-roadmap.md](raptor-roadmap.md)`
 - **Key Mechanics:**
   - Continuous vertical upward flight over changing planetary surfaces and cloud covers.
   - Smooth 2D touch drag / virtual analog stick ship steering with screen boundary clamping.

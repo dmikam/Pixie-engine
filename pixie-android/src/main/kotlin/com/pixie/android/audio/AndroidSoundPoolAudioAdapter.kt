@@ -38,6 +38,12 @@ class AndroidSoundPoolAudioAdapter(val context: Context) : AudioPort {
             AudioEvent.GAME_OVER -> 0.6f
             AudioEvent.BUTTON_CLICK -> 1.0f
             AudioEvent.DAY_NIGHT_SHIFT -> 0.9f
+            AudioEvent.FIRE_PRIMARY -> 1.4f
+            AudioEvent.FIRE_MISSILE -> 0.85f
+            AudioEvent.EXPLOSION_SMALL -> 1.1f
+            AudioEvent.EXPLOSION_LARGE -> 0.65f
+            AudioEvent.SHIELD_HIT -> 1.3f
+            AudioEvent.POWERUP_PICKUP -> 1.6f
         }
         // In this proof-of-concept, sound cues are registered or dynamically sounded
     }

@@ -107,4 +107,10 @@ data class AnimationSequence(
         }
         return frames.last().sprite
     }
+
+    companion object {
+        fun singleFrame(sprite: PixelSprite, name: String = "default"): AnimationSequence {
+            return AnimationSequence(name, listOf(AnimationFrame(sprite, 1.0f)), isLooping = true)
+        }
+    }
 }

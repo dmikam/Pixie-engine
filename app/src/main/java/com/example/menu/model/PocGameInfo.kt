@@ -64,32 +64,31 @@ object PocGameRegistry {
             title = "Raptor",
             genre = "Arcade Sci-Fi Shmup",
             paradigm = "Vertical Scroller",
-            status = GameStatus.NEXT_UP,
-            releaseVersion = "v0.5 (Next)",
+            status = GameStatus.PLAYABLE,
+            releaseVersion = "v0.5",
             tagline = "Pilot an interceptor over hostile planetary surfaces against swarms of enemy craft.",
             description = "A classic 90s-style vertical top-down arcade shooter. Pilot an experimental aerospace fighter over sweeping planetary surfaces, dodging bullet hell patterns and unleashing concentrated laser fire.",
             primaryColor = Color(0xFFFF9100),
             secondaryColor = Color(0xFFFF3D00),
             engineHighlights = listOf(
-                "VerticalScrollerViewMode camera tracking",
-                "Zero-allocation high-frequency projectile pool (100+ bullets)",
-                "Parametric wave spawner (sine waves, swooping formations)",
-                "Rotated sprite headings & screen boundary clamping"
+                "Continuous Difficulty (0..100) & Context Property Scaler",
+                "Zero-allocation Projectile Pool & Procedural Particle Engine",
+                "Self-encapsulated Weapon Definitions (Lasers, Missiles, Plasma)",
+                "VerticalScrollerViewMode camera & multi-layer scrolling"
             ),
             plannedMechanics = listOf(
                 "Touch-drag / virtual joystick precision steering",
-                "Auto-fire pulse lasers & charge secondary missiles",
-                "Energy shield depletion & boss phase transitions",
-                "Multi-layer atmospheric cloud drift & planetary flyover"
+                "Encapsulated primary cannons & homing secondary missiles",
+                "Procedural multi-stage explosions & particle sparks",
+                "Destructible ground turrets, silos, pickable perks, and multi-phase bosses"
             ),
             subsystemsTested = listOf(
-                "VerticalScrollerViewMode",
-                "Zero-Alloc Projectile Pool",
-                "Parametric Wave Timeline",
-                "Radial & Spatial Partition Collision",
-                "Dynamic Surface Parallax"
+                "Continuous Difficulty (0..MAX_DIFFICULTY)",
+                "Zero-Alloc Projectile & Particle Pools",
+                "Encapsulated Weapon Architecture",
+                "VerticalScrollerViewMode & Multi-Level Biomes"
             ),
-            controlsSummary = "Direct Touch Drag / Virtual Analog Stick + Weapon Trigger"
+            controlsSummary = "Direct Touch Drag / Virtual Analog Stick + Auto/Manual Fire + Mega-Bomb"
         ),
         PocGameInfo(
             id = "arkanoid",
