@@ -1,15 +1,15 @@
 # Pixie Engine PoC Roadmap & Planification
 
-> **Version:** 0.4.0  
-> **Last Updated:** 2026-10-18  
+> **Version:** 0.5.0  
+> **Last Updated:** 2026-10-20  
 > **Status:** Active Multi-Genre Engine Validation  
 
 Pixie Engine is a standalone, lightweight 2D pixel-art game engine engineered in pure Kotlin (`:pixie-engine`) with Android hardware adapters (`:pixie-android`) and a showcase client (`:app`).
 
 To validate the engine across diverse 2D game paradigms, we are developing 4 distinct Proof-of-Concept (PoC) games gradually:
 1. **Dinorun** — Horizontal Endless Scroller *(Complete / Playable)*
-2. **Raptor** — Vertical Arcade Space/Jet Scroller *(In Queue / Next Up)*
-3. **Arkanoid** — Fixed-Screen Brick Breaker *(Planned)*
+2. **Raptor** — Vertical Arcade Space/Jet Scroller *(Complete / Playable)*
+3. **Arkanoid** — Fixed-Screen Brick Breaker *(Planned / Next Up)*
 4. **Chiki** — Classic Side-Scrolling Platformer *(Planned)*
 
 ---
@@ -20,7 +20,7 @@ To validate the engine across diverse 2D game paradigms, we are developing 4 dis
 | :--- | :--- | :--- | :--- | :--- |
 | **🎮 Game Hub / Menu** | Multi-Game Launcher | Dynamic game lifecycle & navigation | **DONE** | v0.4 |
 | **🦖 Dinorun** | Horizontal Scroller | 5-layer parallax, ColorMatrix recovery, chunk recycling | **DONE (Playable)** | v0.3 |
-| **🚀 Raptor** | Vertical Scroller | High-speed vertical camera, bullet pool, wave spawner | **IN QUEUE** | v0.5 |
+| **🚀 Raptor** | Vertical Scroller | High-speed vertical camera, bullet pool, wave spawner | **DONE (Playable)** | v0.5 |
 | **🧱 Arkanoid** | Fixed Screen | Static bounds, reflection angles, destructible grid matrix | **PLANNED** | v0.6 |
 | **⚔️ Chiki** | Classic Platformer | Tilemap collisions, gravity arcs, climbing, one-way ledges | **PLANNED** | v0.7 |
 

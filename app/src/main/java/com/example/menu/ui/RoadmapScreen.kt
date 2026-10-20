@@ -451,6 +451,7 @@ private fun LogAndDocsTab() {
         )
 
         val changelog = listOf(
+            "v0.5.0" to "Released Raptor vertical combat scroller with continuous difficulty (0..100), zero-allocation projectile pooling, procedural particle explosions, destructible ground buildings/naval craft, and offline 16-bit PCM retro sound synthesis.",
             "v0.4.0" to "Added Starting Menu with PoC game selector (Dinorun, Raptor, Arkanoid, Chiki), specs preview modal, in-app Roadmap Viewer, and created DOCS/roadmap.md.",
             "v0.3.0" to "Released Dinorun endless runner with 5-layer parallax stack, ColorMatrix grayscale-to-color recovery, and dual-mode controls.",
             "v0.2.0" to "Multi-module architecture split (:pixie-engine pure Kotlin, :pixie-android adapters).",

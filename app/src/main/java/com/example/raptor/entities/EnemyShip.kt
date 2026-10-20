@@ -23,19 +23,19 @@ enum class EnemyType(
     val width: Int,
     val height: Int
 ) {
-    SCOUT(18f, 130f, 150L, 14, 14),
-    INTERCEPTOR(40f, 110f, 350L, 18, 16),
-    GUNSHIP(90f, 65f, 800L, 22, 20),
-    STEALTH_BOMBER(140f, 50f, 1500L, 26, 22)
+    SCOUT(18f, 52f, 150L, 14, 14),
+    INTERCEPTOR(38f, 44f, 350L, 18, 16),
+    GUNSHIP(80f, 28f, 800L, 22, 20),
+    STEALTH_BOMBER(120f, 22f, 1500L, 26, 22)
 }
 
 /**
  * Hostile combat craft in Raptor.
  *
  * Encapsulates:
- * - Dynamic HP & flight trajectory (sine swoop, straight charge, hover strafe)
+ * - Dynamic HP & flight trajectory (graceful sine curves, steady strafe, heavy gunship advance)
  * - Self-encapsulated hostile weapon system (Red Lasers, Plasma Fans)
- * - Procedural drops (weapon upgrade, shield, repair, score gems)
+ * - Procedural drops (weapon upgrade, missiles, shield, repair, score gems)
  * - Context-driven property scaling (difficulty 0..100 & current level)
  */
 class EnemyShip(
@@ -55,6 +55,7 @@ class EnemyShip(
     var maxHealth: Float = type.baseHealth
     var scoreAward: Long = type.scoreValue
     var flightTime: Float = 0f
+    private val flightSeed: Float = Random.nextFloat() * 10f
 
     // Weapon system configured per enemy type
     val weaponSystem = WeaponSystem(
@@ -70,7 +71,7 @@ class EnemyShip(
     ).apply {
         shotCount = when (type) {
             EnemyType.SCOUT -> 1
-            EnemyType.INTERCEPTOR -> 2
+            EnemyType.INTERCEPTOR -> 1
             EnemyType.GUNSHIP -> 3
             EnemyType.STEALTH_BOMBER -> 3
         }
@@ -88,11 +89,10 @@ class EnemyShip(
 
         // Dynamic parameter calculations based on continuous difficulty & level
         parameterCalculator = { enemy, ctx ->
-            // Health scales with difficulty (0..100) and progression level
             val scaledHp = ctx.calculateDynamicProperty(
                 baseValue = type.baseHealth,
-                difficultyWeight = 0.5f,
-                levelWeight = 0.2f
+                difficultyWeight = 0.4f,
+                levelWeight = 0.15f
             )
             enemy.parameters["maxHealth"] = scaledHp
             if (health == maxHealth) {
@@ -100,10 +100,9 @@ class EnemyShip(
                 health = scaledHp
             }
 
-            // Flight speed
             val scaledSpeed = ctx.calculateDynamicProperty(
                 baseValue = type.baseSpeed,
-                difficultyWeight = 0.3f,
+                difficultyWeight = 0.25f,
                 levelWeight = 0.1f
             )
             enemy.parameters["speed"] = scaledSpeed
@@ -117,24 +116,24 @@ class EnemyShip(
 
         val speed = parameters["speed"] ?: type.baseSpeed
 
-        // Trajectory by archetype
+        // Graceful tactical arcade flight paths
         when (type) {
             EnemyType.SCOUT -> {
-                // Swift straight downward run with slight horizontal drift
-                velocity = Vec2(sin(flightTime * 3f) * 30f, speed)
+                // Swift straight downward run with slight gentle drift
+                velocity = Vec2(sin((flightTime + flightSeed) * 1.8f) * 18f, speed)
             }
             EnemyType.INTERCEPTOR -> {
-                // Wide sweeping sine wave swoop
-                val vx = sin(flightTime * 4.5f) * 70f
+                // Sweeping sine wave curves
+                val vx = sin((flightTime + flightSeed) * 2.2f) * 42f
                 velocity = Vec2(vx, speed)
             }
             EnemyType.GUNSHIP -> {
                 // Steady advance downward with hover deceleration
-                val vy = if (position.y < 90f) speed else speed * 0.6f
-                velocity = Vec2(sin(flightTime * 2f) * 20f, vy)
+                val vy = if (position.y < 85f) speed else speed * 0.7f
+                velocity = Vec2(sin((flightTime + flightSeed) * 1.2f) * 14f, vy)
             }
             EnemyType.STEALTH_BOMBER -> {
-                // Slow armored advance
+                // Slow, heavy armored advance
                 velocity = Vec2(0f, speed)
             }
         }
@@ -146,7 +145,7 @@ class EnemyShip(
      * Checks if enemy can shoot at the player.
      */
     fun tryShoot(playerTarget: PixieObject?, context: GameContext, outList: MutableList<Projectile>): Boolean {
-        if (!isAlive || position.y < 10f) return false
+        if (!isAlive || position.y < 15f || position.y > 270f) return false
         val muzzlePos = position + Vec2(size.x * 0.5f, size.y)
         return weaponSystem.fire(
             origin = muzzlePos,
@@ -166,16 +165,27 @@ class EnemyShip(
             health = 0f
             isAlive = false
 
-            // Spawns procedural explosion
-            val explosion = if (type == EnemyType.GUNSHIP || type == EnemyType.STEALTH_BOMBER) {
-                ExplosionType.TITAN_CHAIN
-            } else {
-                ExplosionType.AERIAL_EXPLOSION
+            // Death explosion based on craft size
+            val explosionType = when (type) {
+                EnemyType.SCOUT -> ExplosionType.AERIAL_EXPLOSION
+                EnemyType.INTERCEPTOR -> ExplosionType.AERIAL_EXPLOSION
+                EnemyType.GUNSHIP -> ExplosionType.GROUND_BLAST
+                EnemyType.STEALTH_BOMBER -> ExplosionType.GROUND_BLAST
             }
-            particleLayer?.spawnExplosion(explosion, position + (size * 0.5f), scale = 1.2f)
-            audio?.playSound(AudioEvent.EXPLOSION_SMALL)
+            val scale = when (type) {
+                EnemyType.SCOUT -> 1.0f
+                EnemyType.INTERCEPTOR -> 1.2f
+                EnemyType.GUNSHIP -> 1.6f
+                EnemyType.STEALTH_BOMBER -> 1.8f
+            }
 
-            // Trigger drop
+            particleLayer?.spawnExplosion(explosionType, position + (size * 0.5f), scale)
+            audio?.playSound(
+                if (type == EnemyType.GUNSHIP || type == EnemyType.STEALTH_BOMBER)
+                    AudioEvent.EXPLOSION_LARGE else AudioEvent.EXPLOSION_SMALL
+            )
+
+            // Spawn random reward drop
             onDeathDrop?.invoke(position + (size * 0.5f))
             return true
         }
@@ -183,100 +193,104 @@ class EnemyShip(
     }
 
     companion object {
+        // Scout Craft: 14x14 Swift Delta Wing
         val SPRITE_SCOUT = PixelSprite.fromAscii(
             listOf(
-                "....######....",
-                "..##########..",
-                ".############.",
-                "##############",
-                "###...##...###",
-                "###...##...###",
-                "##############",
-                ".############.",
-                "..##########..",
-                "...########...",
-                "....######....",
-                ".....####.....",
                 "......##......",
-                "......##......"
+                ".....####.....",
+                ".....####.....",
+                "....######....",
+                "....######....",
+                "...########...",
+                "..###.##.###..",
+                "..##..##..##..",
+                ".###..##..###.",
+                ".##...##...##.",
+                "##....##....##",
+                "##....##....##",
+                "#............#",
+                ".............."
             ),
-            mapOf('.' to 0x00000000, '#' to 0xFFD32F2F.toInt()) // Crimson Red
+            mapOf('.' to 0x00000000, '#' to 0xFFE53935.toInt())
         )
 
+        // Interceptor Craft: 18x16 Swept Wing Fighter
         val SPRITE_INTERCEPTOR = PixelSprite.fromAscii(
             listOf(
-                "#...######...#",
-                "##.########.##",
-                "##############",
-                ".############.",
-                "..##########..",
-                "...########...",
-                "....######....",
-                ".....####.....",
-                "....######....",
-                "...########...",
-                "..##########..",
-                ".############.",
-                "##############",
-                "##.########.##",
-                "#...######...#",
-                ".....####....."
+                "........##........",
+                ".......####.......",
+                ".......####.......",
+                "......######......",
+                ".....########.....",
+                "....##########....",
+                "...###..##..###...",
+                "..###...##...###..",
+                ".####...##...####.",
+                "#####...##...#####",
+                "####....##....####",
+                "###.....##.....###",
+                "##......##......##",
+                "#.......##.......#",
+                "........##........",
+                ".................."
             ),
-            mapOf('.' to 0x00000000, '#' to 0xFFE65100.toInt()) // Amber Orange
+            mapOf('.' to 0x00000000, '#' to 0xFFD81B60.toInt())
         )
 
+        // Gunship: 22x20 Heavy Armored Dreadnought
         val SPRITE_GUNSHIP = PixelSprite.fromAscii(
             listOf(
-                "......##########......",
-                "....##############....",
-                "..##################..",
-                "######################",
-                "######################",
-                "###..############..###",
-                "###..############..###",
-                "######################",
-                "######################",
-                "..##################..",
-                "....##############....",
-                "......##########......",
-                "........######........",
-                ".........####.........",
                 ".........####.........",
                 "........######........",
+                ".......########.......",
                 "......##########......",
+                ".....############.....",
                 "....##############....",
+                "...####...##...####...",
+                "..#####...##...#####..",
+                ".######...##...######.",
+                "#######...##...#######",
+                "#######...##...#######",
+                "#######...##...#######",
+                ".######...##...######.",
+                "..#####...##...#####..",
+                "...####...##...####...",
                 "....##############....",
-                "......##########......"
+                ".....############.....",
+                "......##########......",
+                ".......########.......",
+                "........######........"
             ),
-            mapOf('.' to 0x00000000, '#' to 0xFF5D4037.toInt()) // Armored Brown
+            mapOf('.' to 0x00000000, '#' to 0xFF8E24AA.toInt())
         )
 
+        // Stealth Bomber: 26x22 Heavy Flying Wing
         val SPRITE_BOMBER = PixelSprite.fromAscii(
             listOf(
-                "........##########........",
-                "......##############......",
-                "....##################....",
-                "..######################..",
-                "##########################",
-                "##########################",
-                "###..################..###",
-                "###..################..###",
-                "##########################",
-                "##########################",
-                "..######################..",
-                "....##################....",
-                "......##############......",
-                "........##########........",
-                "..........######..........",
+                "............##............",
                 "...........####...........",
                 "..........######..........",
+                ".........########.........",
                 "........##########........",
+                ".......############.......",
                 "......##############......",
+                ".....################.....",
                 "....##################....",
-                "....##################....",
-                "......##############......"
+                "...###...########...###...",
+                "..###....########....###..",
+                ".###.....########.....###.",
+                "####.....########.....####",
+                "###......########......###",
+                "##.......########.......##",
+                "#........########........#",
+                ".........########.........",
+                "..........######..........",
+                "...........####...........",
+                "............##............",
+                "..........................",
+                ".........................."
             ),
-            mapOf('.' to 0x00000000, '#' to 0xFF263238.toInt()) // Stealth Slate
+            mapOf('.' to 0x00000000, '#' to 0xFF37474F.toInt())
         )
     }
 }

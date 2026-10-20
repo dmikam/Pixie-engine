@@ -16,8 +16,8 @@ android {
     applicationId = "com.aistudio.pixie.engine.dino"
     minSdk = 24
     targetSdk = 36
-    versionCode = 3
-    versionName = "0.3"
+    versionCode = 4
+    versionName = "0.5.0"
 
     testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
   }

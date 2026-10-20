@@ -71,9 +71,15 @@ class DinoGameCoordinator(
         engine.chunkManager.reset(0f)
     }
 
+    private var lastMilestoneHundred: Int = 0
+
     fun updateInputs() {
         if (inputAdapter.isJumpPressed) {
+            val wasGrounded = player.isGrounded
             player.jump()
+            if (wasGrounded && !player.isGrounded) {
+                audioAdapter.playSound(AudioEvent.JUMP)
+            }
         }
         player.setDuckingState(inputAdapter.isDuckPressed)
     }
@@ -116,6 +122,12 @@ class DinoGameCoordinator(
         // Distance and continuous score accumulation
         engine.context.distance = player.position.x / 10f
         engine.context.score = (engine.context.distance * 2f).toLong() + (engine.colorRecovery.progress * 500f).toLong()
+
+        val hundred = (engine.context.distance / 100f).toInt()
+        if (hundred > lastMilestoneHundred) {
+            lastMilestoneHundred = hundred
+            audioAdapter.playSound(AudioEvent.SCORE_MILESTONE)
+        }
     }
 
     fun switchWorld(world: WorldDefinition) {

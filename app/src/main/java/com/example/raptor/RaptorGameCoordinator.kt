@@ -29,7 +29,7 @@ import kotlin.random.Random
  * Drives the PixieEngine in vertical scrolling mode, managing:
  * - High-speed projectile simulation and pooling
  * - Procedural enemy squadrons & formation flight paths
- * - Destructible ground installations, turrets, and chain explosions
+ * - Destructible ground installations, turrets, naval ships, and chain explosions
  * - Collectible power-ups and active perk badges
  * - Multi-stage boss encounters and campaign level progression
  * - Continuous difficulty scaling (0..100) and context property computations
@@ -109,8 +109,8 @@ class RaptorGameCoordinator(
         isBossSpawned = false
         levelDistanceTraveled = 0f
         isLevelCompleted = false
-        waveSpawnTimer = 1.0f
-        groundSpawnTimer = 0.5f
+        waveSpawnTimer = 1.2f
+        groundSpawnTimer = 0.4f
 
         // Initialize player ship at lower third of screen (Y = 250)
         playerShip = RaptorShip(
@@ -150,14 +150,19 @@ class RaptorGameCoordinator(
         setupGame()
     }
 
+    /**
+     * Frame update hook driven by PixieGameCanvas vsync loop.
+     * Note: Engine layers and objects are updated by PixieGameCanvas via engine.tick(dt).
+     */
     fun update(dt: Float) {
         if (engine.context.isGameOver || isLevelCompleted) return
 
-        levelDistanceTraveled += dt * 80f
+        // Scrolling distance accumulation (authentic arcade pace ~36 virtual px/s)
+        levelDistanceTraveled += dt * 36f
         engine.context.distance = levelDistanceTraveled
         engine.context.currentMovingSpeed = playerShip.velocity.length()
 
-        // 1. Spawning timeline (waves & ground targets until boss)
+        // 1. Spawning timeline (aerial waves & ground targets until boss)
         val bossTriggerDistance = currentLevel.targetDistance
         if (!isBossSpawned && levelDistanceTraveled >= bossTriggerDistance) {
             spawnBoss()
@@ -181,14 +186,13 @@ class RaptorGameCoordinator(
             boundsYMax = virtualResolution.height.toFloat() - 10f
         )
 
-        // 4. Update enemies & enemy shooting
+        // 4. Update enemies: check shooting and offscreen despawn
         val enemyIter = enemies.iterator()
         while (enemyIter.hasNext()) {
             val enemy = enemyIter.next()
-            enemy.update(dt, engine.context)
             enemy.tryShoot(playerShip, engine.context, enemyProjectiles)
 
-            // Despawn off bottom screen
+            // Despawn off bottom screen or if killed
             if (enemy.position.y > virtualResolution.height + 30f || !enemy.isAlive) {
                 engine.itemsLayer.removeObject(enemy.id)
                 enemyIter.remove()
@@ -199,9 +203,6 @@ class RaptorGameCoordinator(
         val groundIter = groundTargets.iterator()
         while (groundIter.hasNext()) {
             val target = groundIter.next()
-            // Ground targets drift downward as player flies forward
-            target.position += Vec2(0f, 50f * dt)
-            target.update(dt, engine.context)
             target.tryShoot(playerShip, engine.context, enemyProjectiles)
 
             if (target.position.y > virtualResolution.height + 40f) {
@@ -212,7 +213,6 @@ class RaptorGameCoordinator(
 
         // 6. Update boss
         boss?.let { b ->
-            b.update(dt, engine.context)
             b.attack(engine.context, enemyProjectiles)
             if (b.isDefeated) {
                 engine.context.score += 10000L
@@ -227,7 +227,6 @@ class RaptorGameCoordinator(
         val pickupIter = pickups.iterator()
         while (pickupIter.hasNext()) {
             val p = pickupIter.next()
-            p.update(dt, engine.context)
             p.attractTowards(playerShip.position, dt, hasMagnet)
 
             // Check collection by player
@@ -242,14 +241,11 @@ class RaptorGameCoordinator(
             }
         }
 
-        // 8. Update projectiles
+        // 8. Update active projectiles
         updateProjectiles(dt)
 
         // 9. Collision detection: Player projectiles vs Enemies, Boss, and Ground targets
         resolveCombatCollisions()
-
-        // 10. Update engine main loop and tick particle subsystem
-        engine.tick(dt)
 
         // Check game over
         if (!playerShip.isAlive && !engine.context.isGameOver) {
@@ -285,7 +281,7 @@ class RaptorGameCoordinator(
     }
 
     private fun resolveCombatCollisions() {
-        // Player bullets vs Enemies
+        // Player bullets vs Enemies, Boss, and Ground installations
         for (bullet in playerProjectiles) {
             if (!bullet.isAlive) continue
 
@@ -309,7 +305,7 @@ class RaptorGameCoordinator(
                 }
             }
 
-            // Against Ground Destructibles
+            // Against Ground Destructibles (Buildings, Silos, Naval Gunboats, Turrets)
             if (bullet.isAlive) {
                 for (target in groundTargets) {
                     if (!target.isDestroyed && bullet.boundingBox.intersects(target.boundingBox)) {
@@ -341,15 +337,15 @@ class RaptorGameCoordinator(
         if (waveSpawnTimer <= 0f) {
             // Difficulty determines wave frequency
             val spawnDelay = when (selectedDifficulty) {
-                DifficultyPreset.EASY -> 3.2f
-                DifficultyPreset.MEDIUM -> 2.4f
-                DifficultyPreset.DIFFICULT -> 1.7f
-                DifficultyPreset.HEAVY_METAL -> 1.1f
-                else -> 2.4f
+                DifficultyPreset.EASY -> 4.0f
+                DifficultyPreset.MEDIUM -> 3.2f
+                DifficultyPreset.DIFFICULT -> 2.5f
+                DifficultyPreset.HEAVY_METAL -> 1.8f
+                else -> 3.2f
             }
             waveSpawnTimer = spawnDelay
 
-            // Pick formation
+            // Pick enemy type
             val spawnType = when (Random.nextInt(10)) {
                 in 0..4 -> EnemyType.SCOUT
                 in 5..7 -> EnemyType.INTERCEPTOR
@@ -363,10 +359,10 @@ class RaptorGameCoordinator(
                 else -> 1
             }
 
-            val startX = Random.nextFloat() * (virtualResolution.width - 60f) + 30f
+            val startX = Random.nextFloat() * (virtualResolution.width - 70f) + 35f
             for (i in 0 until squadronSize) {
-                val posX = startX + (i - (squadronSize - 1) / 2f) * 22f
-                val posY = -20f - (i * 18f)
+                val posX = startX + (i - (squadronSize - 1) / 2f) * 24f
+                val posY = -25f - (i * 22f)
                 val enemy = EnemyShip(
                     id = "enemy_${System.currentTimeMillis()}_$i",
                     type = spawnType,
@@ -384,25 +380,59 @@ class RaptorGameCoordinator(
     private fun updateGroundSpawning(dt: Float) {
         groundSpawnTimer -= dt
         if (groundSpawnTimer <= 0f) {
-            groundSpawnTimer = Random.nextFloat() * 4.0f + 2.5f
+            // Frequent ground building spawns (every 1.5 - 2.5 seconds)
+            groundSpawnTimer = Random.nextFloat() * 1.0f + 1.5f
 
-            val groundType = when (Random.nextInt(4)) {
-                0 -> DestructibleType.GUN_TURRET
-                1 -> DestructibleType.FUEL_SILO
-                2 -> DestructibleType.RADAR_TOWER
-                else -> DestructibleType.SUPPLY_BUNKER
+            // Select ground structure appropriate for level
+            val groundType = when (currentLevelIndex) {
+                1 -> {
+                    // Archipelago / Ocean: Gunboats, coastal batteries, fuel depots, radar
+                    when (Random.nextInt(7)) {
+                        0 -> DestructibleType.NAVAL_GUNBOAT
+                        1 -> DestructibleType.GUN_TURRET
+                        2 -> DestructibleType.FUEL_SILO
+                        3 -> DestructibleType.RADAR_TOWER
+                        4 -> DestructibleType.SUPPLY_BUNKER
+                        5 -> DestructibleType.OIL_STORAGE_TANK
+                        else -> DestructibleType.MISSILE_SILO
+                    }
+                }
+                2 -> {
+                    // Canyon & Refinery
+                    when (Random.nextInt(6)) {
+                        0 -> DestructibleType.FUEL_SILO
+                        1 -> DestructibleType.OIL_STORAGE_TANK
+                        2 -> DestructibleType.GUN_TURRET
+                        3 -> DestructibleType.SUPPLY_BUNKER
+                        4 -> DestructibleType.MISSILE_SILO
+                        else -> DestructibleType.RADAR_TOWER
+                    }
+                }
+                else -> {
+                    // Orbital Citadel
+                    when (Random.nextInt(4)) {
+                        0 -> DestructibleType.RADAR_TOWER
+                        1 -> DestructibleType.GUN_TURRET
+                        2 -> DestructibleType.MISSILE_SILO
+                        else -> DestructibleType.SUPPLY_BUNKER
+                    }
+                }
             }
 
-            val posX = Random.nextFloat() * (virtualResolution.width - 40f) + 20f
+            val posX = Random.nextFloat() * (virtualResolution.width - groundType.width - 24f) + 12f
             val groundObj = GroundDestructible(
-                id = "ground_${System.currentTimeMillis()}",
+                id = "ground_${System.currentTimeMillis()}_${Random.nextInt(1000)}",
                 type = groundType,
-                initialPos = Vec2(posX, -30f),
+                initialPos = Vec2(posX, -35f),
                 projectilePool = engine.projectilePool,
                 audio = audio,
                 onDeathDrop = { dropPos -> spawnDrop(dropPos) },
                 onChainExplosion = { center, radius, dmg -> triggerAoeDamage(center, radius, dmg) }
-            )
+            ).apply {
+                // Drift downward at exact terrain scroll speed (36f)
+                velocity = Vec2(0f, 36f)
+            }
+
             groundTargets.add(groundObj)
             engine.itemsLayer.addObject(groundObj)
         }
@@ -428,16 +458,18 @@ class RaptorGameCoordinator(
     private fun spawnDrop(pos: Vec2) {
         val roll = Random.nextInt(100)
         val dropType = when {
-            roll < 18 -> PickupType.WEAPON_UPGRADE
-            roll < 34 -> PickupType.HOMING_MISSILES
-            roll < 52 -> PickupType.SHIELD_CELL
-            roll < 68 -> PickupType.REPAIR_KIT
-            roll < 78 -> PickupType.MEGA_BOMB
-            roll < 90 -> PickupType.SCORE_GEM
+            roll < 20 -> PickupType.WEAPON_UPGRADE
+            roll < 36 -> PickupType.HOMING_MISSILES
+            roll < 54 -> PickupType.SHIELD_CELL
+            roll < 70 -> PickupType.REPAIR_KIT
+            roll < 80 -> PickupType.MEGA_BOMB
+            roll < 92 -> PickupType.SCORE_GEM
             else -> PickupType.PERK_CHIP
         }
 
-        val pickup = RaptorPickup("pickup_${System.currentTimeMillis()}", dropType, pos)
+        val pickup = RaptorPickup("pickup_${System.currentTimeMillis()}_${Random.nextInt(1000)}", dropType, pos).apply {
+            velocity = Vec2(0f, 36f)
+        }
         pickups.add(pickup)
         engine.itemsLayer.addObject(pickup)
     }
@@ -454,7 +486,6 @@ class RaptorGameCoordinator(
                 audio?.playSound(AudioEvent.COLLECT)
             }
             PickupType.PERK_CHIP -> {
-                // Grant random unlocked perk
                 val perkOptions = listOf("OVERCLOCK", "RAPID_FIRE", "TITANIUM_HULL", "MAGNET_BEAM")
                 val perk = perkOptions.random()
                 engine.context.addPerk(perk)
@@ -465,16 +496,23 @@ class RaptorGameCoordinator(
 
     private fun triggerAoeDamage(center: Vec2, radius: Float, damage: Float) {
         val radiusSq = radius * radius
+        // Damage adjacent aerial enemies
         for (enemy in enemies) {
             if (enemy.isAlive && (enemy.position - center).lengthSquared() <= radiusSq) {
                 val killed = enemy.takeDamage(damage, engine.particleLayer)
                 if (killed) engine.context.score += enemy.scoreAward
             }
         }
+        // Damage adjacent ground targets (chain reactions!)
+        for (target in groundTargets) {
+            if (!target.isDestroyed && (target.position - center).lengthSquared() <= radiusSq) {
+                val destroyed = target.takeDamage(damage, engine.particleLayer)
+                if (destroyed) engine.context.score += target.type.scoreValue
+            }
+        }
     }
 
     fun fireSecondaryMissiles() {
-        // Find nearest living aerial enemy
         var nearestEnemy: PixieObject? = null
         var nearestDistSq = Float.MAX_VALUE
 
@@ -501,28 +539,5 @@ class RaptorGameCoordinator(
             activeEnemyProjectiles = enemyProjectiles,
             particleLayer = engine.particleLayer
         )
-    }
-
-    fun render(batch: com.pixie.engine.core.ports.RenderBatchPort) {
-        // Draw deep biome background color
-        batch.fillBackground(currentLevel.deepColor)
-
-        // Draw active projectiles through the batch
-        for (proj in playerProjectiles) {
-            if (proj.isAlive) {
-                batch.drawSprite(proj.getCurrentSprite(), proj.position.x, proj.position.y)
-                if (proj.motionBlur.enabled && proj.trailHistory.isNotEmpty()) {
-                    batch.drawMotionBlur(proj.getCurrentSprite(), proj.trailHistory, proj.motionBlur.strength)
-                }
-            }
-        }
-        for (proj in enemyProjectiles) {
-            if (proj.isAlive) {
-                batch.drawSprite(proj.getCurrentSprite(), proj.position.x, proj.position.y)
-            }
-        }
-
-        // Render main engine layers (environment, terrain, items, particles, foreground)
-        engine.render(batch)
     }
 }

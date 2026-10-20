@@ -43,7 +43,7 @@ class RaptorTerrainLayer(
 ) : PixieLayer {
     override val name: String = "Raptor_Vertical_Terrain"
 
-    var scrollSpeed: Float = 50f
+    var scrollSpeed: Float = 36f
     private var scrollOffset: Float = 0f
     private var waveTime: Float = 0f
 

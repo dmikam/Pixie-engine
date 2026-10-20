@@ -220,6 +220,23 @@ Engine Core     Weapons &     Vertical      Player Ship   Enemy Waves   Ground &
 - [x] Build Raptor HUD: Hull health bar, Shield gauge, Weapon tier indicator, Bomb count, Missile count, Score, Active perks chips.
 - [x] Add Raptor Game Screen into Launcher (`GameSelectorScreen`), allowing players to select difficulty (Easy, Medium, Difficult, Heavy Metal) and launch Raptor directly!
 
+### 🟩 Phase 8: Sound Synthesis, Speed Calibration & Ground Destructibles Overhaul — *[COMPLETED]*
+- [x] **Procedural Retro Sound Synthesizer (`RetroAudioSynthesizer.kt` & `AndroidSoundPoolAudioAdapter.kt`):**
+  - Generated offline 16-bit 22050Hz PCM WAV audio files for all 14 `AudioEvent` cues (laser chirps, missile launches, small/large explosions, shield deflections, ascending arpeggios, UI clicks, jump/duck slides).
+  - Loaded into native `SoundPool` for zero-lag hardware-accelerated concurrent sound playback with pitch variation.
+  - Connected sound events across both DinoRun and Raptor (Jump, Duck, Fire Primary, Missiles, Explosions, Collect, Milestones, Game Over, UI clicks).
+- [x] **Pacing & Speed Calibration:**
+  - Diagnosed and resolved the 3x-4x speed bug caused by redundant update loops between `PixieGameCanvas` vsync driver and the coordinator.
+  - Rebalanced aircraft flight speeds (Scout 52f, Interceptor 44f, Gunship 28f, Bomber 22f) and wave trajectories (smooth broad sine arcs).
+  - Rebalanced bullet velocities (Vulcan 230f, Plasma 200f, Missiles 160f, Enemy lasers 100f, Enemy plasma 85f) for authentic tactical dodging.
+  - Synchronized terrain and ground drift speeds to 36 virtual px/s.
+- [x] **Ground Destructibles & Surface Targets Expansion:**
+  - Expanded ground catalog: Coastal Gun Batteries, Volatile Fuel Silos, Radar Installations, SAM Missile Silos, Reinforced Supply Bunkers, Naval Patrol Gunboats, and Crude Oil Tanks.
+  - Added visual hit-flashing (monochrome flash on impact), mini health meters, and scorched rubble craters remaining on the scrolling terrain.
+  - Tuned ground spawn frequency (every 1.5 - 2.5s) with multi-target AoE chain explosion reactions.
+- [x] **Letterbox-Safe Relative Touch Controls:**
+  - Aspect-ratio-corrected coordinate transformations eliminating border sticking and enabling 1-to-1 finger steering across all device screen aspect ratios.
+
 ---
 
 ## 🎯 5. What We Should Implement First

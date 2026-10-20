@@ -75,6 +75,7 @@ import com.pixie.android.haptic.AndroidHapticAdapter
 import com.pixie.android.ui.PixieGameCanvas
 import com.pixie.engine.core.context.DifficultyPreset
 import com.pixie.engine.core.math.Vec2
+import com.pixie.engine.core.ports.AudioEvent
 import kotlinx.coroutines.delay
 
 @Composable
@@ -125,31 +126,10 @@ fun RaptorGameScreen(
     coordinator.onGameOver = { isGameOver = true }
     coordinator.onVictory = { isVictory = true }
 
-    // 60 FPS Game Loop Driver
+    // Game Engine Pause/Resume Control
     LaunchedEffect(isPaused, isGameOver, isVictory) {
         if (!isPaused && !isGameOver && !isVictory) {
             coordinator.engine.start()
-            var lastTimeNanos = System.nanoTime()
-
-            while (true) {
-                val now = System.nanoTime()
-                val dt = ((now - lastTimeNanos) / 1_000_000_000f).coerceIn(0.001f, 0.05f)
-                lastTimeNanos = now
-
-                coordinator.update(dt)
-
-                // Sync HUD reactive values
-                currentScore = coordinator.engine.context.score
-                hullHp = coordinator.playerShip.hull
-                shieldHp = coordinator.playerShip.shield
-                missilesLeft = coordinator.playerShip.missileSalvoes
-                bombsLeft = coordinator.playerShip.megaBombs
-                weaponTier = coordinator.playerShip.weaponTier
-                activePerksList = coordinator.engine.context.activePerks.toList()
-                levelDistance = coordinator.engine.context.distance
-
-                delay(16L) // ~60fps fixed step
-            }
         } else {
             coordinator.engine.pause()
         }
@@ -168,41 +148,59 @@ fun RaptorGameScreen(
             .background(Color(0xFF070B12))
             .statusBarsPadding()
     ) {
-        // Direct Touch-drag Controller over the whole screen
+        // Direct Touch-drag Controller over the whole screen with letterbox-aware scaling
         BoxWithConstraints(
             modifier = Modifier
                 .fillMaxSize()
                 .pointerInput(Unit) {
                     detectDragGestures(
                         onDragStart = { offset ->
-                            val scaleX = 240f / size.width.toFloat()
-                            val scaleY = 320f / size.height.toFloat()
-                            val touchVirtual = Vec2(offset.x * scaleX, (offset.y * scaleY) - 20f)
-                            val distToShip = (touchVirtual - coordinator.playerShip.position).length()
-                            if (distToShip < 65f) {
+                            val renderScale = kotlin.math.min(size.width / 240f, size.height / 320f)
+                            val renderOffsetX = (size.width - 240f * renderScale) * 0.5f
+                            val renderOffsetY = (size.height - 320f * renderScale) * 0.5f
+
+                            val virtualTouchX = (offset.x - renderOffsetX) / renderScale
+                            val virtualTouchY = (offset.y - renderOffsetY) / renderScale
+
+                            val dist = (Vec2(virtualTouchX, virtualTouchY) - coordinator.playerShip.position).length()
+                            if (dist < 75f) {
                                 coordinator.playerShip.targetPosition = Vec2(
-                                    touchVirtual.x.coerceIn(4f, 218f),
-                                    touchVirtual.y.coerceIn(24f, 290f)
+                                    virtualTouchX.coerceIn(4f, 218f),
+                                    virtualTouchY.coerceIn(24f, 290f)
                                 )
                             }
                         },
                         onDrag = { change, dragAmount ->
                             change.consume()
-                            val scaleX = 240f / size.width.toFloat()
-                            val scaleY = 320f / size.height.toFloat()
+                            val renderScale = kotlin.math.min(size.width / 240f, size.height / 320f)
                             val currentTarget = coordinator.playerShip.targetPosition
                             coordinator.playerShip.targetPosition = Vec2(
-                                (currentTarget.x + dragAmount.x * scaleX).coerceIn(4f, 218f),
-                                (currentTarget.y + dragAmount.y * scaleY).coerceIn(24f, 290f)
+                                (currentTarget.x + dragAmount.x / renderScale).coerceIn(4f, 218f),
+                                (currentTarget.y + dragAmount.y / renderScale).coerceIn(24f, 290f)
                             )
                         }
                     )
                 }
         ) {
-            // Main Retro Arcade Game Canvas
+            // Main Retro Arcade Game Canvas synchronized to screen vsync
             PixieGameCanvas(
                 engine = coordinator.engine,
-                modifier = Modifier.fillMaxSize()
+                modifier = Modifier.fillMaxSize(),
+                onFrameTick = { deltaSeconds ->
+                    if (!isPaused && !isGameOver && !isVictory) {
+                        coordinator.update(deltaSeconds)
+
+                        // Sync HUD reactive values
+                        currentScore = coordinator.engine.context.score
+                        hullHp = coordinator.playerShip.hull
+                        shieldHp = coordinator.playerShip.shield
+                        missilesLeft = coordinator.playerShip.missileSalvoes
+                        bombsLeft = coordinator.playerShip.megaBombs
+                        weaponTier = coordinator.playerShip.weaponTier
+                        activePerksList = coordinator.engine.context.activePerks.toList()
+                        levelDistance = coordinator.engine.context.distance
+                    }
+                }
             )
 
             // Top HUD Overlay
@@ -212,8 +210,14 @@ fun RaptorGameScreen(
                 difficulty = selectedDifficulty,
                 distance = levelDistance,
                 targetDistance = coordinator.currentLevel.targetDistance,
-                onPauseClick = { isPaused = true },
-                onBackClick = { onExitToMenu() }
+                onPauseClick = {
+                    audioAdapter.playSound(AudioEvent.BUTTON_CLICK)
+                    isPaused = true
+                },
+                onBackClick = {
+                    audioAdapter.playSound(AudioEvent.BUTTON_CLICK)
+                    onExitToMenu()
+                }
             )
 
             // Left Side Status Meters (Shield & Hull)
@@ -250,7 +254,10 @@ fun RaptorGameScreen(
                 missilesLeft = missilesLeft,
                 bombsLeft = bombsLeft,
                 activePerks = activePerksList,
-                onToggleAutoFire = { coordinator.isAutoFireEnabled = !coordinator.isAutoFireEnabled },
+                onToggleAutoFire = {
+                    coordinator.isAutoFireEnabled = !coordinator.isAutoFireEnabled
+                    audioAdapter.playSound(AudioEvent.BUTTON_CLICK)
+                },
                 onFireMissiles = { coordinator.fireSecondaryMissiles() },
                 onTriggerBomb = { coordinator.triggerMegaBomb() },
                 modifier = Modifier.align(Alignment.BottomCenter)
@@ -263,8 +270,12 @@ fun RaptorGameScreen(
                 selectedDifficulty = selectedDifficulty,
                 isMuted = isMuted,
                 currentLevel = currentLevelIndex,
-                onResume = { isPaused = false },
+                onResume = {
+                    audioAdapter.playSound(AudioEvent.BUTTON_CLICK)
+                    isPaused = false
+                },
                 onRestart = {
+                    audioAdapter.playSound(AudioEvent.BUTTON_CLICK)
                     coordinator.setupGame()
                     isPaused = false
                 },
@@ -273,14 +284,19 @@ fun RaptorGameScreen(
                     audioAdapter.isMuted = isMuted
                 },
                 onSelectDifficulty = { diff ->
+                    audioAdapter.playSound(AudioEvent.BUTTON_CLICK)
                     selectedDifficulty = diff
                     coordinator.setDifficulty(diff)
                 },
                 onSelectLevel = { lvl ->
+                    audioAdapter.playSound(AudioEvent.BUTTON_CLICK)
                     currentLevelIndex = lvl
                     coordinator.setLevel(lvl)
                 },
-                onExit = onExitToMenu
+                onExit = {
+                    audioAdapter.playSound(AudioEvent.BUTTON_CLICK)
+                    onExitToMenu()
+                }
             )
         }
 

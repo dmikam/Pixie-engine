@@ -34,7 +34,7 @@ object StandardWeapons {
         explosionType = ExplosionType.SPARK_HIT,
         baseHitPower = 12f,
         baseFireRatePerSec = 7f,
-        baseBulletSpeed = 340f,
+        baseBulletSpeed = 230f,
         pierceCount = 1,
         audioEvent = AudioEvent.FIRE_PRIMARY,
         hapticFeedback = HapticFeedbackType.LIGHT
@@ -61,7 +61,7 @@ object StandardWeapons {
         explosionType = ExplosionType.PLASMA_BURST,
         baseHitPower = 18f,
         baseFireRatePerSec = 4.5f,
-        baseBulletSpeed = 280f,
+        baseBulletSpeed = 200f,
         pierceCount = 1,
         audioEvent = AudioEvent.FIRE_PRIMARY,
         hapticFeedback = HapticFeedbackType.MEDIUM,
@@ -95,7 +95,7 @@ object StandardWeapons {
         explosionType = ExplosionType.AERIAL_EXPLOSION,
         baseHitPower = 35f,
         baseFireRatePerSec = 2.0f,
-        baseBulletSpeed = 220f,
+        baseBulletSpeed = 160f,
         pierceCount = 1,
         audioEvent = AudioEvent.FIRE_MISSILE,
         hapticFeedback = HapticFeedbackType.HEAVY,
@@ -123,8 +123,8 @@ object StandardWeapons {
         motionBlur = MotionBlurConfig(enabled = true, strength = 0.4f, maxTrailSamples = 2),
         explosionType = ExplosionType.SPARK_HIT,
         baseHitPower = 8f,
-        baseFireRatePerSec = 1.5f,
-        baseBulletSpeed = 160f,
+        baseFireRatePerSec = 1.3f,
+        baseBulletSpeed = 100f,
         pierceCount = 1,
         audioEvent = AudioEvent.FIRE_PRIMARY
     )
@@ -147,8 +147,8 @@ object StandardWeapons {
         motionBlur = MotionBlurConfig(enabled = true, strength = 0.5f, maxTrailSamples = 3),
         explosionType = ExplosionType.PLASMA_BURST,
         baseHitPower = 14f,
-        baseFireRatePerSec = 0.8f,
-        baseBulletSpeed = 140f,
+        baseFireRatePerSec = 0.7f,
+        baseBulletSpeed = 85f,
         pierceCount = 1,
         audioEvent = AudioEvent.FIRE_PRIMARY,
         trajectoryFactory = { shotIndex, totalShots, headingRad, _ ->
