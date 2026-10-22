@@ -3,6 +3,7 @@ package com.example.dinorun.entities
 import com.pixie.engine.core.context.GameContext
 import com.pixie.engine.core.entity.MotionBlurConfig
 import com.pixie.engine.core.entity.PixieObject
+import com.pixie.engine.core.entity.PixiePlayer
 import com.pixie.engine.core.math.Vec2
 import com.pixie.engine.core.sprite.AnimationFrame
 import com.pixie.engine.core.sprite.AnimationSequence
@@ -10,17 +11,17 @@ import com.pixie.engine.core.sprite.PixelSprite
 
 /**
  * Self-encapsulated Player Dinosaur entity.
- *
- * Encapsulates its own sprites, run/jump/duck animations, physics parameters,
- * dynamic context-scaling formulas, and motion blur settings.
+ * Inherits from engine core [PixiePlayer] base class to eliminate boilerplate.
  */
 class DinoPlayer(
     initialPosition: Vec2,
     val groundY: Float
-) : PixieObject(
+) : PixiePlayer(
     id = "player_dino",
     position = initialPosition,
     size = Vec2(16f, 16f),
+    initialHealth = 100f,
+    initialLives = 1,
     initialClasses = setOf("player")
 ) {
     var isGrounded: Boolean = true

@@ -3,6 +3,7 @@ package com.example.raptor.entities
 import com.pixie.engine.core.context.GameContext
 import com.pixie.engine.core.entity.MotionBlurConfig
 import com.pixie.engine.core.entity.PixieObject
+import com.pixie.engine.core.entity.PixiePlayer
 import com.pixie.engine.core.math.Vec2
 import com.pixie.engine.core.particle.ExplosionType
 import com.pixie.engine.core.particle.ParticleLayer
@@ -21,29 +22,30 @@ import com.pixie.engine.core.weapon.WeaponSystem
 
 /**
  * Player Interceptor craft in Raptor.
- *
- * Encapsulates:
- * - Pixel-art directional bank sprites (neutral, bank left, bank right) with animated thruster plume
- * - Upgradable Primary Cannon (Vulcan -> Twin Vulcan -> Twin Plasma -> Quad Ion Blaster)
- * - Secondary Homing Missile Pods
- * - Super Orbital Mega-Bomb
- * - Regenerative Plasma Shield + Hull Integrity system
- * - Screen boundary clamping and responsive touch motion blur
+ * Inherits from engine core [PixiePlayer] base class to eliminate entity boilerplate.
  */
 class RaptorShip(
     initialPosition: Vec2,
     val projectilePool: ProjectilePool,
     var audio: AudioPort? = null,
     var haptics: HapticPort? = null
-) : PixieObject(
+) : PixiePlayer(
     id = "player_raptor",
     position = initialPosition,
     size = Vec2(18f, 22f),
-    initialClasses = setOf("player", "aircraft")
+    initialHealth = 100f,
+    initialLives = 3,
+    initialClasses = setOf("aircraft")
 ) {
-    // Health & Shield Systems
-    var maxHull: Float = 100f
-    var hull: Float = 100f
+    // Health & Shield Systems (linked to PixiePlayer.health)
+    var maxHull: Float
+        get() = maxHealth
+        set(value) { maxHealth = value }
+
+    var hull: Float
+        get() = health
+        set(value) { health = value }
+
     var maxShield: Float = 100f
     var shield: Float = 100f
     private var shieldRechargeCooldown: Float = 0f
@@ -74,8 +76,6 @@ class RaptorShip(
     // Touch steering smoothing
     var targetPosition: Vec2 = initialPosition
     private val baseSpeed: Float = 360f
-    var isInvulnerable: Boolean = false
-    private var invulnerableTimer: Float = 0f
 
     init {
         // Register directional flight animations
@@ -100,23 +100,46 @@ class RaptorShip(
         }
     }
 
+    var activeWeaponId: String = "vulcan"
+
+    fun equipWeapon(weaponId: String) {
+        activeWeaponId = weaponId
+        updateWeaponTier(GameContext())
+    }
+
     private fun updateWeaponTier(context: GameContext) {
-        when (weaponTier) {
-            1 -> {
-                primaryWeaponSystem.weapon = StandardWeapons.VULCAN_CANNON
+        when (activeWeaponId) {
+            "odin_laser" -> {
+                primaryWeaponSystem.weapon = StandardWeapons.ODIN_LASER
+                primaryWeaponSystem.shotCount = if (weaponTier >= 3) 2 else 1
+            }
+            "deathray" -> {
+                primaryWeaponSystem.weapon = StandardWeapons.DEATHRAY
                 primaryWeaponSystem.shotCount = 1
             }
-            2 -> {
-                primaryWeaponSystem.weapon = StandardWeapons.VULCAN_CANNON
-                primaryWeaponSystem.shotCount = 2
-            }
-            3 -> {
+            "twin_plasma" -> {
                 primaryWeaponSystem.weapon = StandardWeapons.TWIN_PLASMA
-                primaryWeaponSystem.shotCount = 2
+                primaryWeaponSystem.shotCount = if (weaponTier >= 3) 4 else 2
             }
             else -> {
-                primaryWeaponSystem.weapon = StandardWeapons.TWIN_PLASMA
-                primaryWeaponSystem.shotCount = 4
+                when (weaponTier) {
+                    1 -> {
+                        primaryWeaponSystem.weapon = StandardWeapons.VULCAN_CANNON
+                        primaryWeaponSystem.shotCount = 1
+                    }
+                    2 -> {
+                        primaryWeaponSystem.weapon = StandardWeapons.VULCAN_CANNON
+                        primaryWeaponSystem.shotCount = 2
+                    }
+                    3 -> {
+                        primaryWeaponSystem.weapon = StandardWeapons.TWIN_PLASMA
+                        primaryWeaponSystem.shotCount = 2
+                    }
+                    else -> {
+                        primaryWeaponSystem.weapon = StandardWeapons.TWIN_PLASMA
+                        primaryWeaponSystem.shotCount = 4
+                    }
+                }
             }
         }
     }
@@ -251,8 +274,14 @@ class RaptorShip(
         return fired
     }
 
+    override fun takeDamage(amount: Float, context: GameContext?): Boolean {
+        if (!isAlive || isInvulnerable) return false
+        takeDamage(amount, particleLayer = null)
+        return true
+    }
+
     fun takeDamage(amount: Float, particleLayer: ParticleLayer?) {
-        if (isInvulnerable) return
+        if (isInvulnerable || !isAlive) return
 
         shieldRechargeCooldown = shieldRechargeDelay
         audio?.playSound(AudioEvent.HIT)
@@ -271,15 +300,34 @@ class RaptorShip(
             particleLayer?.spawnSparks(position + (size * 0.5f), count = 10, color = 0xFFFF5722.toInt())
         }
 
-        // Brief invulnerability flash
-        isInvulnerable = true
-        invulnerableTimer = 0.6f
+        // Brief invulnerability flash handled by PixiePlayer
+        grantInvulnerability(0.8f)
 
         if (hull <= 0f) {
             hull = 0f
             isAlive = false
             particleLayer?.spawnExplosion(ExplosionType.AERIAL_EXPLOSION, position, scale = 1.5f)
             audio?.playSound(AudioEvent.GAME_OVER)
+        }
+    }
+
+    override fun onCollision(other: PixieObject, context: GameContext) {
+        if (!isAlive || isInvulnerable) return
+
+        if (other is EnemyShip && other.isAlive && !other.isWreck) {
+            val playerDmg = when (other.type) {
+                EnemyType.SCOUT -> 25f
+                EnemyType.INTERCEPTOR -> 35f
+                EnemyType.GUNSHIP -> 45f
+                EnemyType.STEALTH_BOMBER -> 55f
+            }
+            takeDamage(playerDmg, particleLayer = null)
+            grantInvulnerability(1.0f)
+            other.takeDamage(50f, particleLayer = null)
+        } else if (other is RaptorBoss && other.isAlive && !other.isDefeated) {
+            takeDamage(40f, particleLayer = null)
+            grantInvulnerability(1.2f)
+            other.takeDamage(35f, position, particleLayer = null)
         }
     }
 
@@ -293,14 +341,6 @@ class RaptorShip(
         } else if (shield < maxShield) {
             val regenRate = if (context.hasPerk("TITANIUM_HULL")) 28f else 18f
             shield = (shield + regenRate * dt).coerceAtMost(maxShield)
-        }
-
-        // Invulnerability countdown
-        if (isInvulnerable) {
-            invulnerableTimer -= dt
-            if (invulnerableTimer <= 0f) {
-                isInvulnerable = false
-            }
         }
 
         super.update(dt, context)

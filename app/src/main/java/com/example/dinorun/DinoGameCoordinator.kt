@@ -11,6 +11,9 @@ import com.pixie.engine.core.camera.GameViewMode
 import com.pixie.engine.core.math.Vec2
 import com.pixie.engine.core.ports.AudioEvent
 import com.pixie.engine.core.ports.HapticFeedbackType
+import com.pixie.engine.core.entity.PixieCollectible
+import com.pixie.engine.core.entity.PixieEnemy
+import com.pixie.engine.core.entity.PixieObstacle
 import com.pixie.engine.core.ports.VirtualResolution
 import com.pixie.engine.core.world.WorldDefinition
 
@@ -95,25 +98,27 @@ class DinoGameCoordinator(
             if (!obj.isAlive || obj === player) continue
 
             if (playerBox.intersects(obj.boundingBox)) {
-                if (obj.isInClass("hazard")) {
-                    // Player hit obstacle
+                if (obj is PixieCollectible) {
+                    val collected = obj.collect(player, engine.context)
+                    if (collected) {
+                        hapticAdapter.trigger(HapticFeedbackType.LIGHT)
+                        audioAdapter.playSound(AudioEvent.COLLECT)
+                        engine.colorRecovery.addProgress(0.15f)
+                        engine.context.score += 50L
+                        onStateChanged?.invoke()
+                    }
+                } else if (obj is PixieObstacle || obj is PixieEnemy || obj.isInClass("hazard")) {
+                    // Player hit obstacle/enemy hazard
                     hapticAdapter.trigger(HapticFeedbackType.HEAVY)
                     audioAdapter.playSound(AudioEvent.HIT)
+                    player.takeDamage(100f, engine.context)
                     engine.context.livesLeft--
                     obj.isAlive = false
 
-                    if (engine.context.livesLeft <= 0) {
+                    if (engine.context.livesLeft <= 0 || !player.isAlive) {
                         engine.context.isGameOver = true
                         audioAdapter.playSound(AudioEvent.GAME_OVER)
                     }
-                    onStateChanged?.invoke()
-                } else if (obj.isInClass("pickup")) {
-                    // Collected color energy spark
-                    hapticAdapter.trigger(HapticFeedbackType.LIGHT)
-                    audioAdapter.playSound(AudioEvent.COLLECT)
-                    engine.colorRecovery.addProgress(0.15f)
-                    engine.context.score += 50L
-                    obj.isAlive = false
                     onStateChanged?.invoke()
                 }
             }

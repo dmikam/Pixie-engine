@@ -16,6 +16,7 @@ data class GameContext(
     var currentLevel: Int = 1,
     var livesLeft: Int = 3,
     var score: Long = 0L,
+    var credits: Long = 1000L,
     var distance: Float = 0f,
     var gameSpeed: Float = 1.0f,
     var currentMovingSpeed: Float = 0f,
@@ -26,6 +27,30 @@ data class GameContext(
     val activePerks: MutableSet<String> = mutableSetOf(),
     val customAttributes: MutableMap<String, Any> = mutableMapOf()
 ) {
+    /**
+     * Attempts to spend the specified amount of credits.
+     * @return true if successful, false if insufficient credits.
+     */
+    fun spendCredits(amount: Long): Boolean {
+        if (amount <= 0L) return true
+        if (credits >= amount) {
+            credits -= amount
+            return true
+        }
+        return false
+    }
+
+    fun earnCredits(amount: Long) {
+        if (amount > 0L) {
+            credits += amount
+        }
+    }
+
+    fun recoverColor(amount: Float) {
+        if (amount > 0f) {
+            colorRecoveryProgress = (colorRecoveryProgress + amount).coerceAtMost(1.0f)
+        }
+    }
     companion object {
         const val MIN_DIFFICULTY: Int = 0
         const val MAX_DIFFICULTY: Int = 100

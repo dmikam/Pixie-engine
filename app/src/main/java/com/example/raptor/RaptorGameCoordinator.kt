@@ -86,6 +86,10 @@ class RaptorGameCoordinator(
         engine.layerStack.addLayer(projectilesLayer)
         engine.layerStack.addLayer(cloudLayer)
 
+        // Register standard screen support in engine core
+        engine.registerScreen(com.pixie.engine.core.screen.StandardGameplayScreen(engine))
+        engine.setScreen(com.pixie.engine.core.screen.StandardScreenIds.GAMEPLAY)
+
         setupGame()
     }
 
@@ -216,6 +220,7 @@ class RaptorGameCoordinator(
             b.attack(engine.context, enemyProjectiles)
             if (b.isDefeated) {
                 engine.context.score += 10000L
+                engine.context.earnCredits(3500L)
                 isLevelCompleted = true
                 engine.context.isVictory = true
                 onVictory?.invoke()
@@ -231,7 +236,7 @@ class RaptorGameCoordinator(
 
             // Check collection by player
             if (playerShip.boundingBox.intersects(p.boundingBox)) {
-                applyPickup(p.type)
+                p.applyEffect(playerShip, engine.context, audio)
                 p.isAlive = false
                 engine.itemsLayer.removeObject(p.id)
                 pickupIter.remove()
@@ -299,6 +304,7 @@ class RaptorGameCoordinator(
                     val killed = enemy.takeDamage(bullet.hitPower, engine.particleLayer)
                     if (killed) {
                         engine.context.score += enemy.scoreAward
+                        engine.context.earnCredits(enemy.scoreAward / 2)
                     }
                     bullet.onImpact(bullet.position, engine.particleLayer)
                     if (!bullet.isAlive) break
@@ -312,6 +318,7 @@ class RaptorGameCoordinator(
                         val destroyed = target.takeDamage(bullet.hitPower, engine.particleLayer)
                         if (destroyed) {
                             engine.context.score += target.type.scoreValue
+                            engine.context.earnCredits(target.type.scoreValue / 2)
                         }
                         bullet.onImpact(bullet.position, engine.particleLayer)
                         if (!bullet.isAlive) break
@@ -328,6 +335,41 @@ class RaptorGameCoordinator(
                     playerShip.takeDamage(bullet.hitPower, engine.particleLayer)
                     bullet.onImpact(bullet.position, engine.particleLayer)
                 }
+            }
+        }
+
+        // Mid-air collision (ramming): Player ship vs Enemies
+        // Collisions are non-fatal unless health is depleted; both take a heavy hit instead of instant death
+        if (playerShip.isAlive && !playerShip.isInvulnerable) {
+            val playerBox = playerShip.boundingBox
+            for (enemy in enemies) {
+                if (enemy.isAlive && !enemy.isWreck && playerBox.intersects(enemy.boundingBox)) {
+                    val playerHitAmount = when (enemy.type) {
+                        EnemyType.SCOUT -> 25f
+                        EnemyType.INTERCEPTOR -> 35f
+                        EnemyType.GUNSHIP -> 45f
+                        EnemyType.STEALTH_BOMBER -> 55f
+                    }
+                    playerShip.takeDamage(playerHitAmount, engine.particleLayer)
+                    playerShip.grantInvulnerability(1.0f)
+
+                    val killed = enemy.takeDamage(50f, engine.particleLayer)
+                    if (killed) {
+                        engine.context.score += enemy.scoreAward
+                        engine.context.earnCredits(enemy.scoreAward / 2)
+                    }
+                    engine.particleLayer.spawnSparks(playerShip.position + (playerShip.size * 0.5f), count = 12, color = 0xFFFF5722.toInt())
+                    break
+                }
+            }
+
+            // Player ship vs Boss ramming collision
+            val b = boss
+            if (b != null && b.isAlive && !b.isDefeated && playerBox.intersects(b.boundingBox)) {
+                playerShip.takeDamage(40f, engine.particleLayer)
+                playerShip.grantInvulnerability(1.2f)
+                b.takeDamage(35f, playerShip.position, engine.particleLayer)
+                engine.particleLayer.spawnSparks(playerShip.position, count = 14, color = 0xFFFF5722.toInt())
             }
         }
     }
@@ -363,9 +405,9 @@ class RaptorGameCoordinator(
             for (i in 0 until squadronSize) {
                 val posX = startX + (i - (squadronSize - 1) / 2f) * 24f
                 val posY = -25f - (i * 22f)
-                val enemy = EnemyShip(
-                    id = "enemy_${System.currentTimeMillis()}_$i",
+                val enemy = EnemyShip.create(
                     type = spawnType,
+                    id = "enemy_${System.currentTimeMillis()}_$i",
                     initialPos = Vec2(posX, posY),
                     projectilePool = engine.projectilePool,
                     audio = audio,
@@ -420,9 +462,9 @@ class RaptorGameCoordinator(
             }
 
             val posX = Random.nextFloat() * (virtualResolution.width - groundType.width - 24f) + 12f
-            val groundObj = GroundDestructible(
-                id = "ground_${System.currentTimeMillis()}_${Random.nextInt(1000)}",
+            val groundObj = GroundDestructible.create(
                 type = groundType,
+                id = "ground_${System.currentTimeMillis()}_${Random.nextInt(1000)}",
                 initialPos = Vec2(posX, -35f),
                 projectilePool = engine.projectilePool,
                 audio = audio,
@@ -467,7 +509,7 @@ class RaptorGameCoordinator(
             else -> PickupType.PERK_CHIP
         }
 
-        val pickup = RaptorPickup("pickup_${System.currentTimeMillis()}_${Random.nextInt(1000)}", dropType, pos).apply {
+        val pickup = RaptorPickup.create(dropType, "pickup_${System.currentTimeMillis()}_${Random.nextInt(1000)}", pos).apply {
             velocity = Vec2(0f, 36f)
         }
         pickups.add(pickup)
@@ -475,23 +517,7 @@ class RaptorGameCoordinator(
     }
 
     private fun applyPickup(type: PickupType) {
-        when (type) {
-            PickupType.WEAPON_UPGRADE -> playerShip.upgradeWeapon()
-            PickupType.HOMING_MISSILES -> playerShip.addMissiles(4)
-            PickupType.SHIELD_CELL -> playerShip.rechargeShield(40f)
-            PickupType.REPAIR_KIT -> playerShip.repairHull(30f)
-            PickupType.MEGA_BOMB -> playerShip.addBomb(1)
-            PickupType.SCORE_GEM -> {
-                engine.context.score += 1500L
-                audio?.playSound(AudioEvent.COLLECT)
-            }
-            PickupType.PERK_CHIP -> {
-                val perkOptions = listOf("OVERCLOCK", "RAPID_FIRE", "TITANIUM_HULL", "MAGNET_BEAM")
-                val perk = perkOptions.random()
-                engine.context.addPerk(perk)
-                audio?.playSound(AudioEvent.POWERUP_PICKUP)
-            }
-        }
+        RaptorPickup.create(type, "pickup_apply", Vec2.ZERO).applyEffect(playerShip, engine.context, audio)
     }
 
     private fun triggerAoeDamage(center: Vec2, radius: Float, damage: Float) {

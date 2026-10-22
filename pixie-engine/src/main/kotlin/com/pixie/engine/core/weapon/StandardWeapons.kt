@@ -32,8 +32,8 @@ object StandardWeapons {
         ),
         motionBlur = MotionBlurConfig(enabled = true, strength = 0.6f, maxTrailSamples = 3),
         explosionType = ExplosionType.SPARK_HIT,
-        baseHitPower = 12f,
-        baseFireRatePerSec = 7f,
+        baseHitPower = 20f,
+        baseFireRatePerSec = 2.8f,
         baseBulletSpeed = 230f,
         pierceCount = 1,
         audioEvent = AudioEvent.FIRE_PRIMARY,
@@ -59,8 +59,8 @@ object StandardWeapons {
         ),
         motionBlur = MotionBlurConfig(enabled = true, strength = 0.7f, maxTrailSamples = 4),
         explosionType = ExplosionType.PLASMA_BURST,
-        baseHitPower = 18f,
-        baseFireRatePerSec = 4.5f,
+        baseHitPower = 32f,
+        baseFireRatePerSec = 1.8f,
         baseBulletSpeed = 200f,
         pierceCount = 1,
         audioEvent = AudioEvent.FIRE_PRIMARY,
@@ -93,8 +93,8 @@ object StandardWeapons {
         ),
         motionBlur = MotionBlurConfig(enabled = true, strength = 0.5f, maxTrailSamples = 5),
         explosionType = ExplosionType.AERIAL_EXPLOSION,
-        baseHitPower = 35f,
-        baseFireRatePerSec = 2.0f,
+        baseHitPower = 48f,
+        baseFireRatePerSec = 0.8f,
         baseBulletSpeed = 160f,
         pierceCount = 1,
         audioEvent = AudioEvent.FIRE_MISSILE,
@@ -123,7 +123,7 @@ object StandardWeapons {
         motionBlur = MotionBlurConfig(enabled = true, strength = 0.4f, maxTrailSamples = 2),
         explosionType = ExplosionType.SPARK_HIT,
         baseHitPower = 8f,
-        baseFireRatePerSec = 1.3f,
+        baseFireRatePerSec = 0.25f,
         baseBulletSpeed = 100f,
         pierceCount = 1,
         audioEvent = AudioEvent.FIRE_PRIMARY
@@ -147,7 +147,7 @@ object StandardWeapons {
         motionBlur = MotionBlurConfig(enabled = true, strength = 0.5f, maxTrailSamples = 3),
         explosionType = ExplosionType.PLASMA_BURST,
         baseHitPower = 14f,
-        baseFireRatePerSec = 0.7f,
+        baseFireRatePerSec = 0.18f,
         baseBulletSpeed = 85f,
         pierceCount = 1,
         audioEvent = AudioEvent.FIRE_PRIMARY,
@@ -156,5 +156,67 @@ object StandardWeapons {
             val offset = (shotIndex - (totalShots - 1) / 2.0f) * spreadStep
             Trajectory.Spread(headingRad, offset)
         }
+    )
+
+    // 6. OD55 Odin Laser Turret: High-energy military coherent laser
+    val ODIN_LASER = WeaponDefinition(
+        id = "odin_laser",
+        name = "OD55 Odin Laser Turret",
+        bulletSprite = PixelSprite(
+            width = 3,
+            height = 10,
+            pixels = intArrayOf(
+                0x00000000, 0xFFFFFFFF.toInt(), 0x00000000,
+                0xFFFF5252.toInt(), 0xFFFFFFFF.toInt(), 0xFFFF5252.toInt(),
+                0xFFFF1744.toInt(), 0xFFFFFFFF.toInt(), 0xFFFF1744.toInt(),
+                0xFFFF1744.toInt(), 0xFFFF8A80.toInt(), 0xFFFF1744.toInt(),
+                0xFFFF1744.toInt(), 0xFFFF8A80.toInt(), 0xFFFF1744.toInt(),
+                0xFFFF1744.toInt(), 0xFFFF8A80.toInt(), 0xFFFF1744.toInt(),
+                0xFFFF1744.toInt(), 0xFFFF8A80.toInt(), 0xFFFF1744.toInt(),
+                0xFFFF1744.toInt(), 0xFFFF8A80.toInt(), 0xFFFF1744.toInt(),
+                0x00000000, 0xFFFF1744.toInt(), 0x00000000,
+                0x00000000, 0x00000000, 0x00000000
+            )
+        ),
+        motionBlur = MotionBlurConfig(enabled = true, strength = 0.7f, maxTrailSamples = 4),
+        explosionType = ExplosionType.SPARK_HIT,
+        baseHitPower = 38f,
+        baseFireRatePerSec = 2.4f,
+        baseBulletSpeed = 260f,
+        pierceCount = 2,
+        audioEvent = AudioEvent.FIRE_PRIMARY,
+        hapticFeedback = HapticFeedbackType.MEDIUM
+    )
+
+    // 7. MSIL-Atlas Deathray: High-velocity particle stream heavy weapon
+    val DEATHRAY = WeaponDefinition(
+        id = "deathray",
+        name = "MSIL-Atlas Deathray",
+        bulletSprite = PixelSprite(
+            width = 5,
+            height = 12,
+            pixels = intArrayOf(
+                0x00000000, 0x00000000, 0xFFFFFFFF.toInt(), 0x00000000, 0x00000000,
+                0x00000000, 0xFFE040FB.toInt(), 0xFFFFFFFF.toInt(), 0xFFE040FB.toInt(), 0x00000000,
+                0xFFE040FB.toInt(), 0xFFEA80FC.toInt(), 0xFFFFFFFF.toInt(), 0xFFEA80FC.toInt(), 0xFFE040FB.toInt(),
+                0xFFD500F9.toInt(), 0xFFEA80FC.toInt(), 0xFFFFFFFF.toInt(), 0xFFEA80FC.toInt(), 0xFFD500F9.toInt(),
+                0xFFD500F9.toInt(), 0xFFEA80FC.toInt(), 0xFFFFFFFF.toInt(), 0xFFEA80FC.toInt(), 0xFFD500F9.toInt(),
+                0xFFD500F9.toInt(), 0xFFEA80FC.toInt(), 0xFFFFFFFF.toInt(), 0xFFEA80FC.toInt(), 0xFFD500F9.toInt(),
+                0xFFD500F9.toInt(), 0xFFEA80FC.toInt(), 0xFFFFFFFF.toInt(), 0xFFEA80FC.toInt(), 0xFFD500F9.toInt(),
+                0xFFD500F9.toInt(), 0xFFEA80FC.toInt(), 0xFFFFFFFF.toInt(), 0xFFEA80FC.toInt(), 0xFFD500F9.toInt(),
+                0x00000000, 0xFFAA00FF.toInt(), 0xFFEA80FC.toInt(), 0xFFAA00FF.toInt(), 0x00000000,
+                0x00000000, 0xFFAA00FF.toInt(), 0xFFEA80FC.toInt(), 0xFFAA00FF.toInt(), 0x00000000,
+                0x00000000, 0x00000000, 0xFFAA00FF.toInt(), 0x00000000, 0x00000000,
+                0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000
+            )
+        ),
+        motionBlur = MotionBlurConfig(enabled = true, strength = 0.8f, maxTrailSamples = 5),
+        explosionType = ExplosionType.PLASMA_BURST,
+        baseHitPower = 85f,
+        baseFireRatePerSec = 1.4f,
+        baseBulletSpeed = 290f,
+        pierceCount = 3,
+        audioEvent = AudioEvent.FIRE_PRIMARY,
+        hapticFeedback = HapticFeedbackType.HEAVY
     )
 }

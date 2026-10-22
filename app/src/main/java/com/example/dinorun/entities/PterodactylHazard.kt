@@ -1,6 +1,7 @@
 package com.example.dinorun.entities
 
 import com.pixie.engine.core.context.GameContext
+import com.pixie.engine.core.entity.PixieEnemy
 import com.pixie.engine.core.entity.PixieObject
 import com.pixie.engine.core.math.Vec2
 import com.pixie.engine.core.sprite.AnimationFrame
@@ -10,22 +11,23 @@ import kotlin.math.sin
 
 /**
  * Self-encapsulated Flying Pterodactyl aerial hazard.
- *
- * Encapsulates its flapping flight sprites, flapping animation sequence,
- * sinusoidal hovering motion, and flying hazard tags.
+ * Inherits from engine core [PixieEnemy] base class to eliminate boilerplate.
  */
 class PterodactylHazard(
     id: String,
     position: Vec2,
     val speed: Float = 40f
-) : PixieObject(
+) : PixieEnemy(
     id = id,
     position = position,
-    velocity = Vec2(-speed, 0f),
     size = Vec2(18f, 14f),
+    initialHealth = 15f,
+    scoreAward = 250L,
+    contactDamage = 100f,
     initialClasses = setOf("hazard", "flying_hazard", "obstacle")
 ) {
     init {
+        velocity = Vec2(-speed, 0f)
         setAnimation("fly", FLY_ANIMATION)
         playAnimation("fly")
     }

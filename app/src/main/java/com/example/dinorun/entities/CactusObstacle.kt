@@ -1,6 +1,7 @@
 package com.example.dinorun.entities
 
 import com.pixie.engine.core.entity.PixieObject
+import com.pixie.engine.core.entity.PixieObstacle
 import com.pixie.engine.core.math.Vec2
 import com.pixie.engine.core.sprite.AnimationFrame
 import com.pixie.engine.core.sprite.AnimationSequence
@@ -8,19 +9,19 @@ import com.pixie.engine.core.sprite.PixelSprite
 
 /**
  * Prehistoric cactus ground obstacle.
- *
- * Self-encapsulates its own pixel sprites (single and double variants), dimensions,
- * and obstacle hazard classification.
+ * Inherits from engine core [PixieObstacle] base class to eliminate boilerplate.
  */
 class CactusObstacle(
     id: String,
     position: Vec2,
     val isDouble: Boolean = false
-) : PixieObject(
+) : PixieObstacle(
     id = id,
     position = position,
     size = if (isDouble) Vec2(18f, 18f) else Vec2(12f, 18f),
-    initialClasses = setOf("hazard", "ground_hazard", "obstacle")
+    isDestructible = false,
+    collisionDamage = 100f,
+    initialClasses = setOf("hazard", "ground_hazard")
 ) {
     init {
         val sprite = if (isDouble) CACTUS_DOUBLE_SPRITE else CACTUS_SMALL_SPRITE

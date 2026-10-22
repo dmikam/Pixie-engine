@@ -2,6 +2,7 @@ package com.example.dinorun.entities
 
 import com.pixie.engine.core.context.GameContext
 import com.pixie.engine.core.entity.ObjectColorMode
+import com.pixie.engine.core.entity.PixieCollectible
 import com.pixie.engine.core.entity.PixieObject
 import com.pixie.engine.core.math.Vec2
 import com.pixie.engine.core.sprite.AnimationFrame
@@ -11,16 +12,13 @@ import kotlin.math.sin
 
 /**
  * Primal Color Energy Spark collectible.
- *
- * Encapsulates its glowing crystal sprite, bobbing floating physics,
- * and ObjectColorMode.AlwaysColor configuration so it shines vividly cyan
- * even when the world is in full grayscale.
+ * Inherits from engine core [PixieCollectible] base class to eliminate boilerplate.
  */
 class ColorSparkPickup(
     id: String,
     position: Vec2,
     val restoreAmount: Float = 0.15f
-) : PixieObject(
+) : PixieCollectible(
     id = id,
     position = position,
     size = Vec2(10f, 10f),
@@ -41,6 +39,10 @@ class ColorSparkPickup(
         // Gentle vertical levitation
         val bob = sin((context.timeElapsedSeconds * 5f + position.x).toDouble()).toFloat() * 3f
         position = Vec2(position.x, initialY + bob)
+    }
+
+    override fun onCollected(collector: PixieObject, context: GameContext) {
+        context.recoverColor(restoreAmount)
     }
 
     companion object {

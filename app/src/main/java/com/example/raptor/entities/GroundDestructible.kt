@@ -1,19 +1,17 @@
 package com.example.raptor.entities
 
-import com.pixie.engine.core.camera.PixieCamera
 import com.pixie.engine.core.context.GameContext
+import com.pixie.engine.core.entity.PixieObstacle
 import com.pixie.engine.core.entity.PixieObject
 import com.pixie.engine.core.math.Vec2
 import com.pixie.engine.core.particle.ExplosionType
 import com.pixie.engine.core.particle.ParticleLayer
 import com.pixie.engine.core.ports.AudioEvent
 import com.pixie.engine.core.ports.AudioPort
-import com.pixie.engine.core.ports.RenderBatchPort
 import com.pixie.engine.core.sprite.AnimationSequence
 import com.pixie.engine.core.sprite.PixelSprite
 import com.pixie.engine.core.weapon.Projectile
 import com.pixie.engine.core.weapon.ProjectilePool
-import com.pixie.engine.core.weapon.StandardWeapons
 import com.pixie.engine.core.weapon.WeaponSystem
 
 enum class DestructibleType(
@@ -35,12 +33,11 @@ enum class DestructibleType(
 }
 
 /**
- * Destructible surface installations, military buildings, fuel tanks, naval gunboats, and ground turrets.
- *
- * Anchored to the scrolling terrain, absorbs player fire, flashes on hit, leaves scorched crater
- * graphics when destroyed, triggers chained area explosions, and drops power-ups.
+ * Common abstract parent class for destructible surface installations, military buildings,
+ * fuel tanks, naval gunboats, and ground turrets in Raptor.
+ * Inherits from engine core [PixieObstacle] base class to eliminate entity boilerplate.
  */
-class GroundDestructible(
+abstract class GroundDestructible(
     id: String,
     val type: DestructibleType,
     initialPos: Vec2,
@@ -48,42 +45,23 @@ class GroundDestructible(
     var audio: AudioPort? = null,
     val onDeathDrop: ((dropPos: Vec2) -> Unit)? = null,
     val onChainExplosion: ((centerPos: Vec2, blastRadius: Float, blastDamage: Float) -> Unit)? = null
-) : PixieObject(
+) : PixieObstacle(
     id = id,
     position = initialPos,
     size = Vec2(type.width.toFloat(), type.height.toFloat()),
-    initialClasses = setOf("ground_target", "destructible")
+    isDestructible = true,
+    initialHealth = type.baseHealth,
+    collisionDamage = 25f,
+    initialClasses = setOf("ground_target")
 ) {
-    var health: Float = type.baseHealth
-    var maxHealth: Float = type.baseHealth
-    var isDestroyed: Boolean = false
     var hitFlashTimer: Float = 0f
+    protected var turretShootCooldown: Float = kotlin.random.Random.nextFloat() * 2.5f + 2.5f
 
     // Optional weapon system for ground turrets / SAM silos / gunboats
-    val weaponSystem = if (type.isTurret) {
-        WeaponSystem(
-            weapon = StandardWeapons.ENEMY_RED_LASER,
-            pool = projectilePool,
-            isPlayer = false,
-            audio = audio
-        ).apply {
-            shotCount = if (type == DestructibleType.GUN_TURRET) 1 else 2
-        }
-    } else null
+    open val weaponSystem: WeaponSystem? = null
 
     init {
-        val sprite = when (type) {
-            DestructibleType.GUN_TURRET -> SPRITE_TURRET
-            DestructibleType.FUEL_SILO -> SPRITE_SILO
-            DestructibleType.RADAR_TOWER -> SPRITE_RADAR
-            DestructibleType.SUPPLY_BUNKER -> SPRITE_BUNKER
-            DestructibleType.MISSILE_SILO -> SPRITE_MISSILE_SILO
-            DestructibleType.NAVAL_GUNBOAT -> SPRITE_GUNBOAT
-            DestructibleType.OIL_STORAGE_TANK -> SPRITE_OIL_TANK
-        }
-        setAnimation("active", AnimationSequence.singleFrame(sprite))
         setAnimation("destroyed", AnimationSequence.singleFrame(SPRITE_CRATER))
-        playAnimation("active")
 
         parameterCalculator = { target, ctx ->
             val scaledHp = ctx.calculateDynamicProperty(
@@ -97,6 +75,7 @@ class GroundDestructible(
                 health = scaledHp
             }
         }
+        velocity = Vec2(0f, 36f)
     }
 
     override fun update(dt: Float, context: GameContext) {
@@ -107,26 +86,44 @@ class GroundDestructible(
             colorMode = com.pixie.engine.core.entity.ObjectColorMode.AlwaysColor
         }
 
-        if (isDestroyed) return
-        weaponSystem?.update(dt)
+        turretShootCooldown -= dt
+
+        if (!isDestroyed) {
+            weaponSystem?.update(dt)
+        }
+
+        // Always integrate velocity (36 px/s) so craters and ruins drift downward with terrain until offscreen
+        velocity = Vec2(0f, 36f)
         super.update(dt, context)
     }
 
     fun tryShoot(playerTarget: PixieObject?, context: GameContext, outList: MutableList<Projectile>): Boolean {
         if (isDestroyed || weaponSystem == null || playerTarget == null || !playerTarget.isAlive) return false
+        if (turretShootCooldown > 0f) return false
 
         // Only shoot when player is within firing range ahead of ground target
         val dy = playerTarget.position.y - position.y
         if (dy > -220f && dy < 40f) {
             val center = position + (size * 0.5f)
-            return weaponSystem.fire(
+            val fired = weaponSystem?.fire(
                 origin = center,
                 headingRad = 1.5707963f, // fires downward/forward
                 context = context,
                 outList = outList
-            )
+            ) ?: false
+            if (fired) {
+                turretShootCooldown = 4.8f // reduced shooting ratio (once every 4.8s)
+            }
+            return fired
         }
         return false
+    }
+
+    /**
+     * Subclasses can override to trigger secondary blast effects (e.g. shockwaves, chained explosions).
+     */
+    open fun onDeathEffect(particleLayer: ParticleLayer?) {
+        // Default no-op
     }
 
     fun takeDamage(amount: Float, particleLayer: ParticleLayer?): Boolean {
@@ -146,11 +143,8 @@ class GroundDestructible(
             particleLayer?.spawnExplosion(ExplosionType.GROUND_BLAST, position + (size * 0.5f), scale = 1.5f)
             audio?.playSound(AudioEvent.EXPLOSION_LARGE)
 
-            // Volatile tanks & silos trigger devastating chain explosions!
-            if (type == DestructibleType.FUEL_SILO || type == DestructibleType.OIL_STORAGE_TANK) {
-                particleLayer?.spawnExplosion(ExplosionType.SHOCKWAVE, position + (size * 0.5f), scale = 2.0f)
-                onChainExplosion?.invoke(position + (size * 0.5f), 85f, 75f)
-            }
+            // Trigger subclass-specific death effect (shockwaves, chain reactions)
+            onDeathEffect(particleLayer)
 
             // Power-up drops
             onDeathDrop?.invoke(position + (size * 0.5f))
@@ -160,217 +154,7 @@ class GroundDestructible(
     }
 
     companion object {
-        // Detailed 16x16 Coastal Gun Turret with steel plating and dual barrels
-        val SPRITE_TURRET = PixelSprite.fromAscii(
-            listOf(
-                "...##......##...",
-                "...##......##...",
-                "..####....####..",
-                "..####....####..",
-                ".##############.",
-                ".##############.",
-                "################",
-                "####..####..####",
-                "####..####..####",
-                "################",
-                "################",
-                ".##############.",
-                ".##############.",
-                "..############..",
-                "...##########...",
-                "....########...."
-            ),
-            mapOf(
-                '.' to 0x00000000,
-                '#' to 0xFF546E7A.toInt() // Slate steel gun battery
-            )
-        )
-
-        // 18x22 Volatile Fuel Silo with hazard stripes and dome top
-        val SPRITE_SILO = PixelSprite.fromAscii(
-            listOf(
-                ".....########.....",
-                "...############...",
-                "..##############..",
-                ".################.",
-                "##################",
-                "##################",
-                "###..########..###",
-                "###..########..###",
-                "##################",
-                "##..##..##..##..##",
-                "##################",
-                "##################",
-                "##..##..##..##..##",
-                "##################",
-                "##################",
-                "##..##..##..##..##",
-                "##################",
-                "##################",
-                "##################",
-                ".################.",
-                "..##############..",
-                "...############..."
-            ),
-            mapOf(
-                '.' to 0x00000000,
-                '#' to 0xFFFF7043.toInt() // High hazard orange silo
-            )
-        )
-
-        // 16x20 Military Radar Installation with dish scanner & support struts
-        val SPRITE_RADAR = PixelSprite.fromAscii(
-            listOf(
-                "....########....",
-                "..############..",
-                ".##############.",
-                "###...####...###",
-                "###...####...###",
-                "################",
-                ".##############.",
-                "..############..",
-                "....########....",
-                "......####......",
-                "......####......",
-                "......####......",
-                ".....######.....",
-                "....##.##.##....",
-                "...###.##.###...",
-                "..####.##.####..",
-                ".#####.##.#####.",
-                "################",
-                "################",
-                "################"
-            ),
-            mapOf(
-                '.' to 0x00000000,
-                '#' to 0xFF00E5FF.toInt() // High-tech radar tower
-            )
-        )
-
-        // 22x18 Heavy Concrete Military Bunker with reinforced blast doors
-        val SPRITE_BUNKER = PixelSprite.fromAscii(
-            listOf(
-                "....##############....",
-                "..##################..",
-                ".####################.",
-                "######################",
-                "######################",
-                "####...########...####",
-                "####...########...####",
-                "######################",
-                "######################",
-                "########......########",
-                "########......########",
-                "########......########",
-                "######################",
-                "######################",
-                ".####################.",
-                "..##################..",
-                "...################...",
-                ".....############....."
-            ),
-            mapOf(
-                '.' to 0x00000000,
-                '#' to 0xFF6D4C41.toInt() // Fortified earthen concrete bunker
-            )
-        )
-
-        // 18x18 Hardened SAM Missile Silo with open launch tube
-        val SPRITE_MISSILE_SILO = PixelSprite.fromAscii(
-            listOf(
-                "....##########....",
-                "..##############..",
-                ".################.",
-                "##################",
-                "###....####....###",
-                "###....####....###",
-                "##......##......##",
-                "##......##......##",
-                "##......##......##",
-                "##......##......##",
-                "###....####....###",
-                "###....####....###",
-                "##################",
-                "##################",
-                ".################.",
-                "..##############..",
-                "....##########....",
-                "......######......"
-            ),
-            mapOf(
-                '.' to 0x00000000,
-                '#' to 0xFFE53935.toInt() // Crimson missile hatch
-            )
-        )
-
-        // 16x26 Armed Naval Patrol Gunboat (navigates coastal waters)
-        val SPRITE_GUNBOAT = PixelSprite.fromAscii(
-            listOf(
-                ".......##.......",
-                "......####......",
-                "......####......",
-                ".....######.....",
-                ".....######.....",
-                "....########....",
-                "....########....",
-                "...##########...",
-                "...##..##..##...",
-                "..###..##..###..",
-                "..############..",
-                "..############..",
-                ".##############.",
-                ".##############.",
-                "################",
-                "################",
-                "################",
-                ".##############.",
-                ".##############.",
-                "..############..",
-                "..############..",
-                "...##########...",
-                "...##########...",
-                "....########....",
-                ".....######.....",
-                "......####......"
-            ),
-            mapOf(
-                '.' to 0x00000000,
-                '#' to 0xFF37474F.toInt() // Battleship gray naval boat
-            )
-        )
-
-        // 20x20 Heavy Industrial Oil Storage Tank
-        val SPRITE_OIL_TANK = PixelSprite.fromAscii(
-            listOf(
-                ".....##########.....",
-                "...##############...",
-                "..################..",
-                ".##################.",
-                "####################",
-                "####################",
-                "###..##########..###",
-                "###..##########..###",
-                "####################",
-                "####################",
-                "####################",
-                "####################",
-                "####################",
-                "####################",
-                "####################",
-                ".##################.",
-                "..################..",
-                "...##############...",
-                ".....##########.....",
-                ".......######......."
-            ),
-            mapOf(
-                '.' to 0x00000000,
-                '#' to 0xFFFFB300.toInt() // Amber industrial tank
-            )
-        )
-
-        // Scorched Rubble Crater
+        // Scorched Rubble Crater shared by all destroyed ground targets
         val SPRITE_CRATER = PixelSprite.fromAscii(
             listOf(
                 "....########....",
@@ -395,5 +179,39 @@ class GroundDestructible(
                 '#' to 0xFF212121.toInt() // Scorched black crater
             )
         )
+
+        /**
+         * Polymorphic factory for GroundDestructible.
+         */
+        fun create(
+            type: DestructibleType,
+            id: String,
+            initialPos: Vec2,
+            projectilePool: ProjectilePool,
+            audio: AudioPort? = null,
+            onDeathDrop: ((dropPos: Vec2) -> Unit)? = null,
+            onChainExplosion: ((centerPos: Vec2, blastRadius: Float, blastDamage: Float) -> Unit)? = null
+        ): GroundDestructible = when (type) {
+            DestructibleType.GUN_TURRET -> GunTurretDestructible(id, initialPos, projectilePool, audio, onDeathDrop, onChainExplosion)
+            DestructibleType.MISSILE_SILO -> MissileSiloDestructible(id, initialPos, projectilePool, audio, onDeathDrop, onChainExplosion)
+            DestructibleType.NAVAL_GUNBOAT -> NavalGunboatDestructible(id, initialPos, projectilePool, audio, onDeathDrop, onChainExplosion)
+            DestructibleType.FUEL_SILO -> FuelSiloDestructible(id, initialPos, projectilePool, audio, onDeathDrop, onChainExplosion)
+            DestructibleType.RADAR_TOWER -> RadarTowerDestructible(id, initialPos, projectilePool, audio, onDeathDrop, onChainExplosion)
+            DestructibleType.SUPPLY_BUNKER -> SupplyBunkerDestructible(id, initialPos, projectilePool, audio, onDeathDrop, onChainExplosion)
+            DestructibleType.OIL_STORAGE_TANK -> OilStorageTankDestructible(id, initialPos, projectilePool, audio, onDeathDrop, onChainExplosion)
+        }
+
+        /**
+         * Invoke operator allowing constructor syntax GroundDestructible(...)
+         */
+        operator fun invoke(
+            id: String,
+            type: DestructibleType,
+            initialPos: Vec2,
+            projectilePool: ProjectilePool,
+            audio: AudioPort? = null,
+            onDeathDrop: ((dropPos: Vec2) -> Unit)? = null,
+            onChainExplosion: ((centerPos: Vec2, blastRadius: Float, blastDamage: Float) -> Unit)? = null
+        ): GroundDestructible = create(type, id, initialPos, projectilePool, audio, onDeathDrop, onChainExplosion)
     }
 }

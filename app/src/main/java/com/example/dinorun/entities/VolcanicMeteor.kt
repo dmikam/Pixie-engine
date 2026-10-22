@@ -4,6 +4,7 @@ import com.pixie.engine.core.context.GameContext
 import com.pixie.engine.core.entity.MotionBlurConfig
 import com.pixie.engine.core.entity.ObjectColorMode
 import com.pixie.engine.core.entity.PixieObject
+import com.pixie.engine.core.entity.PixieObstacle
 import com.pixie.engine.core.math.Vec2
 import com.pixie.engine.core.sprite.AnimationFrame
 import com.pixie.engine.core.sprite.AnimationSequence
@@ -11,22 +12,19 @@ import com.pixie.engine.core.sprite.PixelSprite
 
 /**
  * Falling volcanic meteor hazard.
- *
- * Encapsulates its molten flame sprite, proximity-activated falling trigger,
- * ground impact detection, and motion blur trail.
- *
- * Strictly prevents falling below [groundY] to ensure playability and visual realism.
+ * Inherits from engine core [PixieObstacle] base class to eliminate boilerplate.
  */
 class VolcanicMeteor(
     id: String,
     val targetGroundX: Float,
     val groundY: Float,
     val triggerDistance: Float = 180f
-) : PixieObject(
+) : PixieObstacle(
     id = id,
     position = Vec2(targetGroundX + 45f, -20f), // Starts above viewport
-    velocity = Vec2(-40f, 130f),
     size = Vec2(12f, 12f),
+    isDestructible = false,
+    collisionDamage = 100f,
     initialClasses = setOf("hazard", "meteor")
 ) {
     var hasStartedFalling: Boolean = false
@@ -54,6 +52,7 @@ class VolcanicMeteor(
             val playerX = context.distance * 10f // Convert back to world units
             if (targetGroundX - playerX <= triggerDistance) {
                 hasStartedFalling = true
+                velocity = Vec2(-40f, 130f)
                 motionBlur = MotionBlurConfig(enabled = true, strength = 0.75f, maxTrailSamples = 4)
             } else {
                 // Keep above screen until triggered

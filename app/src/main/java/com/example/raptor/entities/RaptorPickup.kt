@@ -1,8 +1,17 @@
 package com.example.raptor.entities
 
+import com.example.raptor.entities.pickups.HomingMissilesPickup
+import com.example.raptor.entities.pickups.MegaBombPickup
+import com.example.raptor.entities.pickups.PerkChipPickup
+import com.example.raptor.entities.pickups.RepairKitPickup
+import com.example.raptor.entities.pickups.ScoreGemPickup
+import com.example.raptor.entities.pickups.ShieldCellPickup
+import com.example.raptor.entities.pickups.WeaponUpgradePickup
 import com.pixie.engine.core.context.GameContext
+import com.pixie.engine.core.entity.PixieCollectible
 import com.pixie.engine.core.entity.PixieObject
 import com.pixie.engine.core.math.Vec2
+import com.pixie.engine.core.ports.AudioPort
 import com.pixie.engine.core.sprite.AnimationSequence
 import com.pixie.engine.core.sprite.PixelSprite
 import kotlin.math.sin
@@ -18,18 +27,19 @@ enum class PickupType(val label: String, val badgeColor: Int) {
 }
 
 /**
- * Collectible power-ups and cargo pods dropped by enemies and ground structures.
- *
- * Supports magnet attraction towards the player ship when in proximity or with active perk.
+ * Common abstract parent class for collectible power-ups and cargo pods dropped by enemies and ground installations.
+ * Inherits from engine core [PixieCollectible] base class to eliminate entity boilerplate.
  */
-class RaptorPickup(
+abstract class RaptorPickup(
     id: String,
     val type: PickupType,
     initialPos: Vec2
-) : PixieObject(
+) : PixieCollectible(
     id = id,
     position = initialPos,
     size = Vec2(10f, 10f),
+    defaultMagnetRange = 45f,
+    defaultPullSpeed = 120f,
     initialClasses = setOf("pickup")
 ) {
     var bobTime: Float = 0f
@@ -39,7 +49,6 @@ class RaptorPickup(
         val sprite = createPickupSprite(type.badgeColor)
         setAnimation("default", AnimationSequence.singleFrame(sprite))
         playAnimation("default")
-        isSolid = false // Pickups are collected via trigger check, not physics blocking
     }
 
     override fun update(dt: Float, context: GameContext) {
@@ -54,22 +63,27 @@ class RaptorPickup(
     }
 
     /**
-     * Magnet attraction towards player ship.
+     * Magnet attraction towards player ship utilizing core PixieCollectible magnet physics.
      */
     fun attractTowards(playerPos: Vec2, dt: Float, hasMagnetPerk: Boolean) {
-        val delta = playerPos - position
-        val distSq = delta.lengthSquared()
-        val magnetRangeSq = if (hasMagnetPerk) 120f * 120f else 45f * 45f
+        val range = if (hasMagnetPerk) 120f else 45f
+        val speed = if (hasMagnetPerk) 220f else 120f
+        attractTowards(playerPos, dt, range = range, pullSpeed = speed)
+    }
 
-        if (distSq < magnetRangeSq && distSq > 4f) {
-            val pullSpeed = if (hasMagnetPerk) 220f else 120f
-            val pull = delta.normalized() * pullSpeed
-            position += pull * dt
+    override fun onCollected(collector: PixieObject, context: GameContext) {
+        if (collector is RaptorShip) {
+            applyEffect(collector, context, collector.audio)
         }
     }
 
+    /**
+     * Polymorphic effect applied when the player collects this pickup.
+     */
+    abstract fun applyEffect(playerShip: RaptorShip, context: GameContext, audio: AudioPort?)
+
     companion object {
-        private fun createPickupSprite(accentColor: Int): PixelSprite {
+        fun createPickupSprite(accentColor: Int): PixelSprite {
             return PixelSprite.fromAscii(
                 listOf(
                     "..######..",
@@ -89,5 +103,24 @@ class RaptorPickup(
                 )
             )
         }
+
+        /**
+         * Polymorphic factory for RaptorPickup subclasses.
+         */
+        fun create(type: PickupType, id: String, initialPos: Vec2): RaptorPickup = when (type) {
+            PickupType.WEAPON_UPGRADE -> WeaponUpgradePickup(id, initialPos)
+            PickupType.HOMING_MISSILES -> HomingMissilesPickup(id, initialPos)
+            PickupType.SHIELD_CELL -> ShieldCellPickup(id, initialPos)
+            PickupType.REPAIR_KIT -> RepairKitPickup(id, initialPos)
+            PickupType.MEGA_BOMB -> MegaBombPickup(id, initialPos)
+            PickupType.SCORE_GEM -> ScoreGemPickup(id, initialPos)
+            PickupType.PERK_CHIP -> PerkChipPickup(id, initialPos)
+        }
+
+        /**
+         * Operator invoke for constructor syntax RaptorPickup(id, type, pos).
+         */
+        operator fun invoke(id: String, type: PickupType, initialPos: Vec2): RaptorPickup =
+            create(type, id, initialPos)
     }
 }

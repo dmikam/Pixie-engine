@@ -27,6 +27,7 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Bolt
 import androidx.compose.material.icons.filled.Campaign
 import androidx.compose.material.icons.filled.CrisisAlert
+import androidx.compose.material.icons.filled.MonetizationOn
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Refresh
@@ -78,6 +79,13 @@ import com.pixie.engine.core.math.Vec2
 import com.pixie.engine.core.ports.AudioEvent
 import kotlinx.coroutines.delay
 
+enum class RaptorScreenMode {
+    TITLE,         // Iconic title screen with planet Earth and pilot helmet artwork
+    BRIEFING,      // Military briefing desk & difficulty selection
+    TERMINAL_SHOP, // "HDF MAIN DISPLAY" CRT Computer Terminal Weapon Shop
+    COMBAT         // Active vertical scrolling combat
+}
+
 @Composable
 fun RaptorGameScreen(
     onExitToMenu: () -> Unit,
@@ -99,6 +107,7 @@ fun RaptorGameScreen(
         )
     }
 
+    var currentScreenMode by remember { mutableStateOf(RaptorScreenMode.TITLE) }
     var isPaused by remember { mutableStateOf(false) }
     var isGameOver by remember { mutableStateOf(false) }
     var isVictory by remember { mutableStateOf(false) }
@@ -114,12 +123,22 @@ fun RaptorGameScreen(
     var activePerksList by remember { mutableStateOf(listOf<String>()) }
     var levelDistance by remember { mutableFloatStateOf(0f) }
 
-    // Handle back button
+    // Handle back button for multi-screen navigation
     BackHandler {
-        if (!isPaused && !isGameOver && !isVictory) {
-            isPaused = true
-        } else {
-            onExitToMenu()
+        when (currentScreenMode) {
+            RaptorScreenMode.TITLE -> onExitToMenu()
+            RaptorScreenMode.BRIEFING -> currentScreenMode = RaptorScreenMode.TITLE
+            RaptorScreenMode.TERMINAL_SHOP -> currentScreenMode = RaptorScreenMode.TITLE
+            RaptorScreenMode.COMBAT -> {
+                if (!isPaused && !isGameOver && !isVictory) {
+                    isPaused = true
+                } else {
+                    currentScreenMode = RaptorScreenMode.TERMINAL_SHOP
+                    isPaused = false
+                    isGameOver = false
+                    isVictory = false
+                }
+            }
         }
     }
 
@@ -127,8 +146,8 @@ fun RaptorGameScreen(
     coordinator.onVictory = { isVictory = true }
 
     // Game Engine Pause/Resume Control
-    LaunchedEffect(isPaused, isGameOver, isVictory) {
-        if (!isPaused && !isGameOver && !isVictory) {
+    LaunchedEffect(currentScreenMode, isPaused, isGameOver, isVictory) {
+        if (currentScreenMode == RaptorScreenMode.COMBAT && !isPaused && !isGameOver && !isVictory) {
             coordinator.engine.start()
         } else {
             coordinator.engine.pause()
@@ -139,6 +158,63 @@ fun RaptorGameScreen(
         onDispose {
             coordinator.engine.stop()
             audioAdapter.release()
+        }
+    }
+
+    when (currentScreenMode) {
+        RaptorScreenMode.TITLE -> {
+            RaptorIntroTitleScreen(
+                audioAdapter = audioAdapter,
+                onNewMission = { currentScreenMode = RaptorScreenMode.BRIEFING },
+                onOpenSupplyDepot = { currentScreenMode = RaptorScreenMode.TERMINAL_SHOP },
+                onOpenBriefing = { currentScreenMode = RaptorScreenMode.BRIEFING },
+                onExitToMenu = onExitToMenu,
+                modifier = modifier
+            )
+            return
+        }
+
+        RaptorScreenMode.BRIEFING -> {
+            RaptorBriefingScreen(
+                selectedDifficulty = selectedDifficulty,
+                currentLevelIndex = currentLevelIndex,
+                pilotCredits = coordinator.engine.context.credits,
+                audioAdapter = audioAdapter,
+                onSelectDifficulty = { diff ->
+                    selectedDifficulty = diff
+                    coordinator.setDifficulty(diff)
+                },
+                onSelectLevel = { lvl ->
+                    currentLevelIndex = lvl
+                    coordinator.setLevel(lvl)
+                },
+                onLaunchMission = {
+                    coordinator.setupGame()
+                    currentScreenMode = RaptorScreenMode.COMBAT
+                },
+                onOpenSupplyDepot = { currentScreenMode = RaptorScreenMode.TERMINAL_SHOP },
+                onBackToTitle = { currentScreenMode = RaptorScreenMode.TITLE },
+                modifier = modifier
+            )
+            return
+        }
+
+        RaptorScreenMode.TERMINAL_SHOP -> {
+            RaptorTerminalShopScreen(
+                coordinator = coordinator,
+                audioAdapter = audioAdapter,
+                onLaunchCombat = {
+                    coordinator.setupGame()
+                    currentScreenMode = RaptorScreenMode.COMBAT
+                },
+                onBackToTitle = { currentScreenMode = RaptorScreenMode.TITLE },
+                modifier = modifier
+            )
+            return
+        }
+
+        RaptorScreenMode.COMBAT -> {
+            // Render active combat below
         }
     }
 
@@ -279,6 +355,11 @@ fun RaptorGameScreen(
                     coordinator.setupGame()
                     isPaused = false
                 },
+                onGoToHangar = {
+                    audioAdapter.playSound(AudioEvent.BUTTON_CLICK)
+                    isPaused = false
+                    currentScreenMode = RaptorScreenMode.TERMINAL_SHOP
+                },
                 onToggleMute = {
                     isMuted = !isMuted
                     audioAdapter.isMuted = isMuted
@@ -295,7 +376,8 @@ fun RaptorGameScreen(
                 },
                 onExit = {
                     audioAdapter.playSound(AudioEvent.BUTTON_CLICK)
-                    onExitToMenu()
+                    isPaused = false
+                    currentScreenMode = RaptorScreenMode.TITLE
                 }
             )
         }
@@ -310,7 +392,15 @@ fun RaptorGameScreen(
                     coordinator.setupGame()
                     isGameOver = false
                 },
-                onExit = onExitToMenu
+                onGoToHangar = {
+                    audioAdapter.playSound(AudioEvent.BUTTON_CLICK)
+                    isGameOver = false
+                    currentScreenMode = RaptorScreenMode.TERMINAL_SHOP
+                },
+                onExit = {
+                    isGameOver = false
+                    currentScreenMode = RaptorScreenMode.TITLE
+                }
             )
         }
 
@@ -324,12 +414,21 @@ fun RaptorGameScreen(
                     currentLevelIndex++
                     coordinator.setLevel(currentLevelIndex)
                     isVictory = false
+                    currentScreenMode = RaptorScreenMode.TERMINAL_SHOP // Return to Hangar shop with earned bounty before next sector!
+                },
+                onGoToHangar = {
+                    audioAdapter.playSound(AudioEvent.BUTTON_CLICK)
+                    isVictory = false
+                    currentScreenMode = RaptorScreenMode.TERMINAL_SHOP
                 },
                 onRestart = {
                     coordinator.setupGame()
                     isVictory = false
                 },
-                onExit = onExitToMenu
+                onExit = {
+                    isVictory = false
+                    currentScreenMode = RaptorScreenMode.TITLE
+                }
             )
         }
     }
@@ -640,6 +739,7 @@ private fun RaptorPauseDialog(
     currentLevel: Int,
     onResume: () -> Unit,
     onRestart: () -> Unit,
+    onGoToHangar: () -> Unit,
     onToggleMute: () -> Unit,
     onSelectDifficulty: (DifficultyPreset) -> Unit,
     onSelectLevel: (Int) -> Unit,
@@ -789,6 +889,18 @@ private fun RaptorPauseDialog(
                 Spacer(modifier = Modifier.height(8.dp))
 
                 OutlinedButton(
+                    onClick = onGoToHangar,
+                    shape = RoundedCornerShape(8.dp),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Icon(Icons.Filled.MonetizationOn, contentDescription = null, tint = Color(0xFFFF9100), modifier = Modifier.size(16.dp))
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text("BASE HANGAR & WEAPON DEPOT", color = Color(0xFFFF9100), fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                }
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                OutlinedButton(
                     onClick = onExit,
                     shape = RoundedCornerShape(8.dp),
                     modifier = Modifier.fillMaxWidth()
@@ -806,6 +918,7 @@ private fun RaptorGameOverDialog(
     levelName: String,
     difficulty: DifficultyPreset,
     onRestart: () -> Unit,
+    onGoToHangar: () -> Unit,
     onExit: () -> Unit
 ) {
     Dialog(onDismissRequest = {}) {
@@ -866,8 +979,23 @@ private fun RaptorGameOverDialog(
                 Spacer(modifier = Modifier.height(20.dp))
 
                 Button(
+                    onClick = onGoToHangar,
+                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF1565C0)),
+                    shape = RoundedCornerShape(8.dp),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(44.dp)
+                        .testTag("game_over_hangar_button")
+                ) {
+                    Icon(Icons.Filled.MonetizationOn, contentDescription = null, tint = Color(0xFFFFD54F))
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text("RETURN TO BASE HANGAR & SHOP", fontWeight = FontWeight.Bold)
+                }
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                OutlinedButton(
                     onClick = onRestart,
-                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFD84315)),
                     shape = RoundedCornerShape(8.dp),
                     modifier = Modifier
                         .fillMaxWidth()
@@ -899,6 +1027,7 @@ private fun RaptorVictoryDialog(
     levelName: String,
     hasNextLevel: Boolean,
     onNextLevel: () -> Unit,
+    onGoToHangar: () -> Unit,
     onRestart: () -> Unit,
     onExit: () -> Unit
 ) {
@@ -952,6 +1081,23 @@ private fun RaptorVictoryDialog(
                 }
 
                 Spacer(modifier = Modifier.height(20.dp))
+
+                // Primary Hangar & Supply Depot action (spend earned bounty on weapons & ammo)
+                Button(
+                    onClick = onGoToHangar,
+                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFFF9100)),
+                    shape = RoundedCornerShape(8.dp),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(44.dp)
+                        .testTag("victory_hangar_button")
+                ) {
+                    Icon(Icons.Filled.MonetizationOn, contentDescription = null, tint = Color.Black)
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text("SUPPLY DEPOT & WEAPON SHOP", color = Color.Black, fontWeight = FontWeight.Bold)
+                }
+
+                Spacer(modifier = Modifier.height(8.dp))
 
                 if (hasNextLevel) {
                     Button(

@@ -1,6 +1,7 @@
 package com.example.raptor.entities
 
 import com.pixie.engine.core.context.GameContext
+import com.pixie.engine.core.entity.PixieEnemy
 import com.pixie.engine.core.entity.PixieObject
 import com.pixie.engine.core.math.Vec2
 import com.pixie.engine.core.particle.ExplosionType
@@ -17,26 +18,30 @@ import kotlin.math.sin
 
 /**
  * Multi-phase boss battle in Raptor.
- *
- * Encapsulates:
- * - Multi-segment health (Left Cannon, Right Cannon, Core Reactor)
- * - Phase 1: Alternating flak and laser salvos
- * - Phase 2 (Rage Mode): Continuous spiral plasma barrage and core flare
- * - Cascading Titan procedural explosion sequence upon destruction
+ * Inherits from engine core [PixieEnemy] base class to eliminate entity boilerplate.
  */
 class RaptorBoss(
     initialPos: Vec2,
     val projectilePool: ProjectilePool,
     var audio: AudioPort? = null,
     val onBossDefeated: (() -> Unit)? = null
-) : PixieObject(
+) : PixieEnemy(
     id = "boss_sea_titan",
     position = initialPos,
     size = Vec2(48f, 36f),
-    initialClasses = setOf("enemy", "boss")
+    initialHealth = 220f,
+    scoreAward = 10000L,
+    contactDamage = 35f,
+    initialClasses = setOf("boss")
 ) {
-    var maxCoreHealth: Float = 220f
-    var coreHealth: Float = 220f
+    var maxCoreHealth: Float
+        get() = maxHealth
+        set(value) { maxHealth = value }
+
+    var coreHealth: Float
+        get() = health
+        set(value) { health = value }
+
     var leftCannonHp: Float = 60f
     var rightCannonHp: Float = 60f
 
@@ -46,7 +51,6 @@ class RaptorBoss(
 
     private var battleTime: Float = 0f
     private var attackCycleTimer: Float = 0f
-    var isDefeated: Boolean = false
 
     // Boss weapon systems
     val primaryWeapons = WeaponSystem(
@@ -91,6 +95,7 @@ class RaptorBoss(
 
         battleTime += dt
         attackCycleTimer += dt
+        bossSalvoCooldown -= dt
         primaryWeapons.update(dt)
         laserCannon.update(dt)
 
@@ -108,32 +113,42 @@ class RaptorBoss(
         super.update(dt, context)
     }
 
+    private var bossSalvoCooldown: Float = 2.0f
+
     fun attack(context: GameContext, outList: MutableList<Projectile>) {
         if (!isAlive || isDefeated || position.y < 20f) return
+        if (bossSalvoCooldown > 0f) return
 
         if (!isRagePhase) {
             // Phase 1: Left and right cannons fire alternating spreads
+            var fired = false
             if (!isLeftCannonDestroyed) {
-                primaryWeapons.fire(
+                fired = primaryWeapons.fire(
                     origin = position + Vec2(6f, size.y - 4f),
                     headingRad = 1.57f,
                     context = context,
                     outList = outList
-                )
+                ) || fired
             }
             if (!isRightCannonDestroyed) {
-                primaryWeapons.fire(
+                fired = primaryWeapons.fire(
                     origin = position + Vec2(size.x - 6f, size.y - 4f),
                     headingRad = 1.57f,
                     context = context,
                     outList = outList
-                )
+                ) || fired
+            }
+            if (fired) {
+                bossSalvoCooldown = 3.5f
             }
         } else {
-            // Phase 2 (Rage): Rapid center core laser and wide plasma fans!
+            // Phase 2 (Rage): Center core laser and plasma burst
             val centerMuzzle = position + Vec2(size.x * 0.5f, size.y)
-            laserCannon.fire(centerMuzzle, 1.57f, context, outList)
-            primaryWeapons.fire(centerMuzzle, 1.57f, context, outList)
+            val fired1 = laserCannon.fire(centerMuzzle, 1.57f, context, outList)
+            val fired2 = primaryWeapons.fire(centerMuzzle, 1.57f, context, outList)
+            if (fired1 || fired2) {
+                bossSalvoCooldown = 2.4f
+            }
         }
     }
 

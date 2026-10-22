@@ -50,6 +50,7 @@ class PixieEngine(
     val itemsLayer = GameItemsLayer()
     val particleLayer = com.pixie.engine.core.particle.ParticleLayer()
     val projectilePool = com.pixie.engine.core.weapon.ProjectilePool()
+    val screenManager = com.pixie.engine.core.screen.ScreenManager()
     val foregroundLayer = ForegroundParallaxLayer()
 
     var player: PixieObject? = null
@@ -93,6 +94,12 @@ class PixieEngine(
         loop.tick(rawDeltaSeconds)
     }
 
+    fun setScreen(screenId: String): Boolean = screenManager.setScreen(screenId, context)
+
+    fun registerScreen(screen: com.pixie.engine.core.screen.PixieScreen) {
+        screenManager.registerScreen(screen)
+    }
+
     private fun updateFixed(dt: Float) {
         if (context.isGameOver) return
 
@@ -100,20 +107,24 @@ class PixieEngine(
         colorRecovery.update(dt)
         context.colorRecoveryProgress = colorRecovery.progress
 
-        // Update layers and active game objects
-        layerStack.update(dt, context)
+        if (screenManager.currentScreen != null) {
+            screenManager.update(dt, context)
+        } else {
+            // Update layers and active game objects
+            layerStack.update(dt, context)
 
-        // Update procedural chunk generation based on camera position
-        chunkManager.update(camera.position.x, itemsLayer, context)
+            // Update procedural chunk generation based on camera position
+            chunkManager.update(camera.position.x, itemsLayer, context)
 
-        // Physics & AABB Collisions resolution
-        checkCollisions()
+            // Physics & AABB Collisions resolution
+            checkCollisions()
 
-        // Update camera position tracking target
-        camera.update(player, dt, context)
+            // Update camera position tracking target
+            camera.update(player, dt, context)
+        }
     }
 
-    private fun checkCollisions() {
+    fun checkCollisions() {
         val solidObjects = itemsLayer.objects.filter { it.isAlive && it.isSolid }
         val size = solidObjects.size
 
@@ -135,7 +146,11 @@ class PixieEngine(
      */
     fun render(batch: RenderBatchPort) {
         batch.pixelsGap = pixelsGap
-        layerStack.render(batch, camera, context)
+        if (screenManager.currentScreen != null) {
+            screenManager.render(batch, camera, context)
+        } else {
+            layerStack.render(batch, camera, context)
+        }
         batch.endFrame()
     }
 
