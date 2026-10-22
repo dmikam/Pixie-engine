@@ -21,6 +21,8 @@ import androidx.activity.compose.BackHandler
 import com.pixie.android.input.ControlMode
 import com.pixie.android.input.DualModeInputAdapter
 import com.pixie.android.ui.PixieGameCanvas
+import com.pixie.engine.core.ports.AudioEvent
+import com.pixie.engine.core.ports.HapticFeedbackType
 
 @Composable
 fun DinoGameScreen(
@@ -47,6 +49,8 @@ fun DinoGameScreen(
     // UI observable state
     var isPaused by remember { mutableStateOf(false) }
     var isGameOver by remember { mutableStateOf(false) }
+    var isSoundEnabled by remember { mutableStateOf(!audioAdapter.isMuted) }
+    var isHapticEnabled by remember { mutableStateOf(hapticAdapter.isEnabled) }
     var score by remember { mutableLongStateOf(0L) }
     var distance by remember { mutableFloatStateOf(0f) }
     var livesLeft by remember { mutableIntStateOf(3) }
@@ -137,6 +141,22 @@ fun DinoGameScreen(
             DinoPauseDialog(
                 layerStack = coordinator.engine.layerStack,
                 currentWorld = coordinator.currentWorld,
+                isSoundEnabled = isSoundEnabled,
+                isHapticEnabled = isHapticEnabled,
+                onToggleSound = { enabled ->
+                    isSoundEnabled = enabled
+                    audioAdapter.isMuted = !enabled
+                    if (enabled) {
+                        audioAdapter.playSound(AudioEvent.BUTTON_CLICK)
+                    }
+                },
+                onToggleHaptic = { enabled ->
+                    isHapticEnabled = enabled
+                    hapticAdapter.isEnabled = enabled
+                    if (enabled) {
+                        hapticAdapter.trigger(HapticFeedbackType.LIGHT)
+                    }
+                },
                 onSelectWorld = { world ->
                     coordinator.switchWorld(world)
                     isPaused = false

@@ -6,6 +6,7 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -24,6 +25,8 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.VolumeMute
+import androidx.compose.material.icons.automirrored.filled.VolumeUp
 import androidx.compose.material.icons.filled.Bolt
 import androidx.compose.material.icons.filled.Campaign
 import androidx.compose.material.icons.filled.CrisisAlert
@@ -32,19 +35,21 @@ import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.RocketLaunch
-import androidx.compose.material.icons.automirrored.filled.VolumeMute
-import androidx.compose.material.icons.automirrored.filled.VolumeUp
+import androidx.compose.material.icons.filled.Vibration
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
+import androidx.compose.material3.Switch
+import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -77,6 +82,7 @@ import com.pixie.android.ui.PixieGameCanvas
 import com.pixie.engine.core.context.DifficultyPreset
 import com.pixie.engine.core.math.Vec2
 import com.pixie.engine.core.ports.AudioEvent
+import com.pixie.engine.core.ports.HapticFeedbackType
 import kotlinx.coroutines.delay
 
 enum class RaptorScreenMode {
@@ -111,7 +117,8 @@ fun RaptorGameScreen(
     var isPaused by remember { mutableStateOf(false) }
     var isGameOver by remember { mutableStateOf(false) }
     var isVictory by remember { mutableStateOf(false) }
-    var isMuted by remember { mutableStateOf(false) }
+    var isSoundEnabled by remember { mutableStateOf(!audioAdapter.isMuted) }
+    var isHapticEnabled by remember { mutableStateOf(hapticAdapter.isEnabled) }
 
     // HUD reactive state
     var currentScore by remember { mutableLongStateOf(0L) }
@@ -344,38 +351,49 @@ fun RaptorGameScreen(
         if (isPaused) {
             RaptorPauseDialog(
                 selectedDifficulty = selectedDifficulty,
-                isMuted = isMuted,
+                isSoundEnabled = isSoundEnabled,
+                isHapticEnabled = isHapticEnabled,
                 currentLevel = currentLevelIndex,
                 onResume = {
-                    audioAdapter.playSound(AudioEvent.BUTTON_CLICK)
+                    if (isSoundEnabled) audioAdapter.playSound(AudioEvent.BUTTON_CLICK)
                     isPaused = false
                 },
                 onRestart = {
-                    audioAdapter.playSound(AudioEvent.BUTTON_CLICK)
+                    if (isSoundEnabled) audioAdapter.playSound(AudioEvent.BUTTON_CLICK)
                     coordinator.setupGame()
                     isPaused = false
                 },
                 onGoToHangar = {
-                    audioAdapter.playSound(AudioEvent.BUTTON_CLICK)
+                    if (isSoundEnabled) audioAdapter.playSound(AudioEvent.BUTTON_CLICK)
                     isPaused = false
                     currentScreenMode = RaptorScreenMode.TERMINAL_SHOP
                 },
-                onToggleMute = {
-                    isMuted = !isMuted
-                    audioAdapter.isMuted = isMuted
+                onToggleSound = { enabled ->
+                    isSoundEnabled = enabled
+                    audioAdapter.isMuted = !enabled
+                    if (enabled) {
+                        audioAdapter.playSound(AudioEvent.BUTTON_CLICK)
+                    }
+                },
+                onToggleHaptic = { enabled ->
+                    isHapticEnabled = enabled
+                    hapticAdapter.isEnabled = enabled
+                    if (enabled) {
+                        hapticAdapter.trigger(HapticFeedbackType.LIGHT)
+                    }
                 },
                 onSelectDifficulty = { diff ->
-                    audioAdapter.playSound(AudioEvent.BUTTON_CLICK)
+                    if (isSoundEnabled) audioAdapter.playSound(AudioEvent.BUTTON_CLICK)
                     selectedDifficulty = diff
                     coordinator.setDifficulty(diff)
                 },
                 onSelectLevel = { lvl ->
-                    audioAdapter.playSound(AudioEvent.BUTTON_CLICK)
+                    if (isSoundEnabled) audioAdapter.playSound(AudioEvent.BUTTON_CLICK)
                     currentLevelIndex = lvl
                     coordinator.setLevel(lvl)
                 },
                 onExit = {
-                    audioAdapter.playSound(AudioEvent.BUTTON_CLICK)
+                    if (isSoundEnabled) audioAdapter.playSound(AudioEvent.BUTTON_CLICK)
                     isPaused = false
                     currentScreenMode = RaptorScreenMode.TITLE
                 }
@@ -735,12 +753,14 @@ private fun RaptorBottomControls(
 @Composable
 private fun RaptorPauseDialog(
     selectedDifficulty: DifficultyPreset,
-    isMuted: Boolean,
+    isSoundEnabled: Boolean,
+    isHapticEnabled: Boolean,
     currentLevel: Int,
     onResume: () -> Unit,
     onRestart: () -> Unit,
     onGoToHangar: () -> Unit,
-    onToggleMute: () -> Unit,
+    onToggleSound: (Boolean) -> Unit,
+    onToggleHaptic: (Boolean) -> Unit,
     onSelectDifficulty: (DifficultyPreset) -> Unit,
     onSelectLevel: (Int) -> Unit,
     onExit: () -> Unit
@@ -842,6 +862,130 @@ private fun RaptorPauseDialog(
                     }
                 }
 
+                Spacer(modifier = Modifier.height(14.dp))
+
+                // Sound & Haptic Controls
+                Text(
+                    text = "SOUND & HAPTIC RESPONSE",
+                    color = Color(0xFFFF9100),
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    fontFamily = FontFamily.Monospace
+                )
+                Spacer(modifier = Modifier.height(6.dp))
+
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .background(Color(0xFF0F131C), RoundedCornerShape(8.dp))
+                        .border(1.dp, Color(0xFF263238), RoundedCornerShape(8.dp))
+                        .padding(10.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    // Sound FX Toggle Row
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(6.dp))
+                            .clickable { onToggleSound(!isSoundEnabled) }
+                            .padding(vertical = 4.dp, horizontal = 4.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(10.dp),
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            Icon(
+                                imageVector = if (isSoundEnabled) Icons.AutoMirrored.Filled.VolumeUp else Icons.AutoMirrored.Filled.VolumeMute,
+                                contentDescription = "Combat Audio",
+                                tint = if (isSoundEnabled) Color(0xFFFF9100) else Color(0xFF78909C),
+                                modifier = Modifier.size(22.dp)
+                            )
+                            Column {
+                                Text(
+                                    text = "Sound Effects (SFX)",
+                                    color = if (isSoundEnabled) Color.White else Color(0xFF78909C),
+                                    fontSize = 13.sp,
+                                    fontWeight = FontWeight.Medium,
+                                    fontFamily = FontFamily.Monospace
+                                )
+                                Text(
+                                    text = if (isSoundEnabled) "Cannons, missiles, explosions" else "Audio Muted",
+                                    color = if (isSoundEnabled) Color(0xFFFFB74D) else Color(0xFF546E7A),
+                                    fontSize = 10.sp
+                                )
+                            }
+                        }
+                        Switch(
+                            checked = isSoundEnabled,
+                            onCheckedChange = { onToggleSound(it) },
+                            colors = SwitchDefaults.colors(
+                                checkedThumbColor = Color(0xFFFF9100),
+                                checkedTrackColor = Color(0xFF5D2400),
+                                uncheckedThumbColor = Color(0xFF78909C),
+                                uncheckedTrackColor = Color(0xFF263238)
+                            ),
+                            modifier = Modifier.testTag("raptor_sound_switch")
+                        )
+                    }
+
+                    HorizontalDivider(
+                        color = Color(0xFF263238),
+                        thickness = 1.dp
+                    )
+
+                    // Haptic Response Toggle Row
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(6.dp))
+                            .clickable { onToggleHaptic(!isHapticEnabled) }
+                            .padding(vertical = 4.dp, horizontal = 4.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(10.dp),
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Filled.Vibration,
+                                contentDescription = "Haptic Feedback",
+                                tint = if (isHapticEnabled) Color(0xFF00E5FF) else Color(0xFF78909C),
+                                modifier = Modifier.size(22.dp)
+                            )
+                            Column {
+                                Text(
+                                    text = "Haptic Response",
+                                    color = if (isHapticEnabled) Color.White else Color(0xFF78909C),
+                                    fontSize = 13.sp,
+                                    fontWeight = FontWeight.Medium,
+                                    fontFamily = FontFamily.Monospace
+                                )
+                                Text(
+                                    text = if (isHapticEnabled) "Vibrations on impacts & weapons" else "Haptics Disabled",
+                                    color = if (isHapticEnabled) Color(0xFF80DEEA) else Color(0xFF546E7A),
+                                    fontSize = 10.sp
+                                )
+                            }
+                        }
+                        Switch(
+                            checked = isHapticEnabled,
+                            onCheckedChange = { onToggleHaptic(it) },
+                            colors = SwitchDefaults.colors(
+                                checkedThumbColor = Color(0xFF00E5FF),
+                                checkedTrackColor = Color(0xFF004D40),
+                                uncheckedThumbColor = Color(0xFF78909C),
+                                uncheckedTrackColor = Color(0xFF263238)
+                            ),
+                            modifier = Modifier.testTag("raptor_haptic_switch")
+                        )
+                    }
+                }
+
                 Spacer(modifier = Modifier.height(18.dp))
 
                 // Actions
@@ -866,36 +1010,28 @@ private fun RaptorPauseDialog(
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     OutlinedButton(
-                        onClick = onToggleMute,
-                        shape = RoundedCornerShape(8.dp),
-                        modifier = Modifier.weight(1f)
-                    ) {
-                        Icon(if (isMuted) Icons.AutoMirrored.Filled.VolumeMute else Icons.AutoMirrored.Filled.VolumeUp, contentDescription = null)
-                        Spacer(modifier = Modifier.width(4.dp))
-                        Text(if (isMuted) "UNMUTE" else "MUTE", fontSize = 12.sp)
-                    }
-
-                    OutlinedButton(
                         onClick = onRestart,
                         shape = RoundedCornerShape(8.dp),
-                        modifier = Modifier.weight(1f)
+                        modifier = Modifier
+                            .weight(1f)
+                            .testTag("raptor_restart_button")
                     ) {
                         Icon(Icons.Filled.Refresh, contentDescription = null)
                         Spacer(modifier = Modifier.width(4.dp))
                         Text("RESTART", fontSize = 12.sp)
                     }
-                }
 
-                Spacer(modifier = Modifier.height(8.dp))
-
-                OutlinedButton(
-                    onClick = onGoToHangar,
-                    shape = RoundedCornerShape(8.dp),
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Icon(Icons.Filled.MonetizationOn, contentDescription = null, tint = Color(0xFFFF9100), modifier = Modifier.size(16.dp))
-                    Spacer(modifier = Modifier.width(6.dp))
-                    Text("BASE HANGAR & WEAPON DEPOT", color = Color(0xFFFF9100), fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                    OutlinedButton(
+                        onClick = onGoToHangar,
+                        shape = RoundedCornerShape(8.dp),
+                        modifier = Modifier
+                            .weight(1f)
+                            .testTag("raptor_hangar_button")
+                    ) {
+                        Icon(Icons.Filled.MonetizationOn, contentDescription = null, tint = Color(0xFFFF9100), modifier = Modifier.size(16.dp))
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text("HANGAR", color = Color(0xFFFF9100), fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                    }
                 }
 
                 Spacer(modifier = Modifier.height(8.dp))
@@ -903,7 +1039,9 @@ private fun RaptorPauseDialog(
                 OutlinedButton(
                     onClick = onExit,
                     shape = RoundedCornerShape(8.dp),
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .testTag("raptor_exit_button")
                 ) {
                     Text("EXIT TO ARCADE HUB", color = Color(0xFFFF5252))
                 }

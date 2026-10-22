@@ -21,7 +21,7 @@ class AndroidHapticAdapter(context: Context) : HapticPort {
         context.getSystemService(Context.VIBRATOR_SERVICE) as? Vibrator
     }
 
-    var isEnabled: Boolean = true
+    override var isEnabled: Boolean = true
 
     override fun trigger(type: HapticFeedbackType) {
         if (!isEnabled || vibrator == null || !vibrator.hasVibrator()) return

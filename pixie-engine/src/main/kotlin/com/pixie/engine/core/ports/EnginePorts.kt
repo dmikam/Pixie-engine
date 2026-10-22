@@ -42,6 +42,9 @@ enum class AudioEvent {
 }
 
 interface AudioPort {
+    var isMuted: Boolean
+        get() = false
+        set(value) {}
     fun playSound(event: AudioEvent)
 }
 
@@ -56,6 +59,9 @@ enum class HapticFeedbackType {
 }
 
 interface HapticPort {
+    var isEnabled: Boolean
+        get() = true
+        set(value) {}
     fun trigger(type: HapticFeedbackType)
 }
 

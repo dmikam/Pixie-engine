@@ -380,8 +380,8 @@ class PixieEngineTest {
         val standardDamage = vulcan.calculateDynamicHitPower(context, isPlayerWeapon = true)
         val standardRate = vulcan.calculateDynamicFireRate(context, isPlayerWeapon = true)
 
-        assertEquals(12f, standardDamage, 0.01f)
-        assertEquals(7f, standardRate, 0.01f)
+        assertEquals(20f, standardDamage, 0.01f)
+        assertEquals(2.8f, standardRate, 0.01f)
 
         // Add OVERCLOCK perk
         context.addPerk("OVERCLOCK")
@@ -473,8 +473,8 @@ class PixieEngineTest {
         )
         assertFalse("Immediate second fire should be blocked by cooldown", firedImmediate)
 
-        // Advance time to expire cooldown
-        weaponSys.update(0.5f)
+        // Advance time to expire cooldown (TWIN_PLASMA rate 1.8 -> cooldown ~0.555s)
+        weaponSys.update(0.6f)
         assertEquals(0f, weaponSys.cooldownTimer, 0.001f)
         val firedAfterCooldown = weaponSys.fire(
             origin = Vec2(100f, 100f),

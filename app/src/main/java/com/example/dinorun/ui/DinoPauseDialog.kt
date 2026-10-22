@@ -13,10 +13,18 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.VolumeMute
+import androidx.compose.material.icons.automirrored.filled.VolumeUp
+import androidx.compose.material.icons.filled.Vibration
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
@@ -43,6 +51,10 @@ import com.pixie.engine.core.world.WorldDefinition
 fun DinoPauseDialog(
     layerStack: LayerStack,
     currentWorld: WorldDefinition,
+    isSoundEnabled: Boolean,
+    isHapticEnabled: Boolean,
+    onToggleSound: (Boolean) -> Unit,
+    onToggleHaptic: (Boolean) -> Unit,
     onSelectWorld: (WorldDefinition) -> Unit,
     onResume: () -> Unit,
     onRestart: () -> Unit,
@@ -137,6 +149,135 @@ fun DinoPauseDialog(
                                 )
                             }
                         }
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                // Sound & Haptic Response Toggles
+                Text(
+                    text = "SOUND & HAPTIC RESPONSE",
+                    color = Color(0xFF00E5FF),
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    fontFamily = FontFamily.Monospace
+                )
+                Text(
+                    text = "Toggle retro sound effects & tactile vibrations",
+                    color = Color(0xFF9E9E9E),
+                    fontSize = 10.sp
+                )
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .background(Color(0xFF121212), RoundedCornerShape(8.dp))
+                        .padding(10.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    // Sound FX Row
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(6.dp))
+                            .clickable { onToggleSound(!isSoundEnabled) }
+                            .padding(vertical = 4.dp, horizontal = 4.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(10.dp),
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            Icon(
+                                imageVector = if (isSoundEnabled) Icons.AutoMirrored.Filled.VolumeUp else Icons.AutoMirrored.Filled.VolumeMute,
+                                contentDescription = "Sound Effects",
+                                tint = if (isSoundEnabled) Color(0xFF00E5FF) else Color(0xFF757575),
+                                modifier = Modifier.size(22.dp)
+                            )
+                            Column {
+                                Text(
+                                    text = "Sound Effects (SFX)",
+                                    color = if (isSoundEnabled) Color.White else Color(0xFF757575),
+                                    fontSize = 13.sp,
+                                    fontWeight = FontWeight.Medium,
+                                    fontFamily = FontFamily.Monospace
+                                )
+                                Text(
+                                    text = if (isSoundEnabled) "Enabled (8-bit arcade audio)" else "Muted",
+                                    color = if (isSoundEnabled) Color(0xFF80DEEA) else Color(0xFF616161),
+                                    fontSize = 10.sp
+                                )
+                            }
+                        }
+                        Switch(
+                            checked = isSoundEnabled,
+                            onCheckedChange = { onToggleSound(it) },
+                            colors = SwitchDefaults.colors(
+                                checkedThumbColor = Color(0xFF00E5FF),
+                                checkedTrackColor = Color(0xFF004D40),
+                                uncheckedThumbColor = Color(0xFF757575),
+                                uncheckedTrackColor = Color(0xFF263238)
+                            ),
+                            modifier = Modifier.testTag("dino_sound_switch")
+                        )
+                    }
+
+                    HorizontalDivider(
+                        color = Color(0xFF263238),
+                        thickness = 1.dp
+                    )
+
+                    // Haptic Response Row
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(6.dp))
+                            .clickable { onToggleHaptic(!isHapticEnabled) }
+                            .padding(vertical = 4.dp, horizontal = 4.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(10.dp),
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Filled.Vibration,
+                                contentDescription = "Haptic Response",
+                                tint = if (isHapticEnabled) Color(0xFF00E5FF) else Color(0xFF757575),
+                                modifier = Modifier.size(22.dp)
+                            )
+                            Column {
+                                Text(
+                                    text = "Haptic Response",
+                                    color = if (isHapticEnabled) Color.White else Color(0xFF757575),
+                                    fontSize = 13.sp,
+                                    fontWeight = FontWeight.Medium,
+                                    fontFamily = FontFamily.Monospace
+                                )
+                                Text(
+                                    text = if (isHapticEnabled) "Enabled (Jump & impact vibrations)" else "Disabled",
+                                    color = if (isHapticEnabled) Color(0xFF80DEEA) else Color(0xFF616161),
+                                    fontSize = 10.sp
+                                )
+                            }
+                        }
+                        Switch(
+                            checked = isHapticEnabled,
+                            onCheckedChange = { onToggleHaptic(it) },
+                            colors = SwitchDefaults.colors(
+                                checkedThumbColor = Color(0xFF00E5FF),
+                                checkedTrackColor = Color(0xFF004D40),
+                                uncheckedThumbColor = Color(0xFF757575),
+                                uncheckedTrackColor = Color(0xFF263238)
+                            ),
+                            modifier = Modifier.testTag("dino_haptic_switch")
+                        )
                     }
                 }
 

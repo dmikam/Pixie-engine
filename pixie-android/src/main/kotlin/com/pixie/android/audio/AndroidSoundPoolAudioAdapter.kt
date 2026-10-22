@@ -30,7 +30,7 @@ class AndroidSoundPoolAudioAdapter(val context: Context) : AudioPort {
     private val soundMap = ConcurrentHashMap<AudioEvent, Int>()
     private val loadedSoundIds = ConcurrentHashMap.newKeySet<Int>()
 
-    var isMuted: Boolean = false
+    override var isMuted: Boolean = false
     var masterVolume: Float = 0.85f
 
     init {

@@ -75,4 +75,67 @@ class ExampleRobolectricTest {
         coordinator.fireSecondaryMissiles()
         assertEquals(initialMissiles - 1, coordinator.playerShip.missileSalvoes)
     }
+
+    @Test
+    fun `audio and haptic adapters toggle mute and enabled correctly`() {
+        val context = ApplicationProvider.getApplicationContext<Context>()
+        val audioAdapter = com.pixie.android.audio.AndroidSoundPoolAudioAdapter(context)
+        val hapticAdapter = com.pixie.android.haptic.AndroidHapticAdapter(context)
+
+        // Initial default states
+        org.junit.Assert.assertFalse("Audio should not be muted initially", audioAdapter.isMuted)
+        org.junit.Assert.assertTrue("Haptics should be enabled initially", hapticAdapter.isEnabled)
+
+        // Toggle mute
+        audioAdapter.isMuted = true
+        org.junit.Assert.assertTrue("Audio is now muted", audioAdapter.isMuted)
+        audioAdapter.playSound(com.pixie.engine.core.ports.AudioEvent.BUTTON_CLICK) // should not crash
+
+        audioAdapter.isMuted = false
+        org.junit.Assert.assertFalse("Audio is unmuted", audioAdapter.isMuted)
+
+        // Toggle haptics
+        hapticAdapter.isEnabled = false
+        org.junit.Assert.assertFalse("Haptics disabled", hapticAdapter.isEnabled)
+        hapticAdapter.trigger(com.pixie.engine.core.ports.HapticFeedbackType.LIGHT) // should safely return
+
+        hapticAdapter.isEnabled = true
+        org.junit.Assert.assertTrue("Haptics re-enabled", hapticAdapter.isEnabled)
+
+        audioAdapter.release()
+    }
+
+    @Test
+    fun `dinorun and raptor pause settings support sound and haptics toggling`() {
+        val context = ApplicationProvider.getApplicationContext<Context>()
+        val audioAdapter = com.pixie.android.audio.AndroidSoundPoolAudioAdapter(context)
+        val hapticAdapter = com.pixie.android.haptic.AndroidHapticAdapter(context)
+        val inputAdapter = com.pixie.android.input.DualModeInputAdapter()
+
+        val dinoCoordinator = com.example.dinorun.DinoGameCoordinator(
+            audioAdapter = audioAdapter,
+            hapticAdapter = hapticAdapter,
+            inputAdapter = inputAdapter
+        )
+        assertNotNull(dinoCoordinator.engine.audio)
+        assertNotNull(dinoCoordinator.engine.haptics)
+
+        val raptorCoordinator = com.example.raptor.RaptorGameCoordinator(
+            audio = audioAdapter,
+            haptics = hapticAdapter
+        )
+        assertNotNull(raptorCoordinator.engine.audio)
+        assertNotNull(raptorCoordinator.engine.haptics)
+
+        // Toggle off
+        audioAdapter.isMuted = true
+        hapticAdapter.isEnabled = false
+
+        assertEquals(true, dinoCoordinator.audioAdapter.isMuted)
+        assertEquals(false, dinoCoordinator.hapticAdapter.isEnabled)
+        assertEquals(true, raptorCoordinator.audio?.isMuted)
+        assertEquals(false, raptorCoordinator.haptics?.isEnabled)
+
+        audioAdapter.release()
+    }
 }
