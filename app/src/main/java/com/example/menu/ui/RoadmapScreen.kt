@@ -115,7 +115,7 @@ fun RoadmapScreen(
                     color = Color(0xFF263238)
                 ) {
                     Text(
-                        text = "v0.4.0",
+                        text = "v0.6.0",
                         color = Color(0xFF00E5FF),
                         fontSize = 10.sp,
                         fontWeight = FontWeight.Bold,
@@ -451,6 +451,7 @@ private fun LogAndDocsTab() {
         )
 
         val changelog = listOf(
+            "v0.6.0" to "Released Arkanoid fixed-screen precision brick breaker with FixedScreenViewMode, Continuous Collision Detection (CCD) preventing tunneling, 2D DestructibleMatrixLayer with explosive chains, angle modulation, and falling power capsules.",
             "v0.5.0" to "Released Raptor vertical combat scroller with continuous difficulty (0..100), zero-allocation projectile pooling, procedural particle explosions, destructible ground buildings/naval craft, and offline 16-bit PCM retro sound synthesis.",
             "v0.4.0" to "Added Starting Menu with PoC game selector (Dinorun, Raptor, Arkanoid, Chiki), specs preview modal, in-app Roadmap Viewer, and created DOCS/roadmap.md.",
             "v0.3.0" to "Released Dinorun endless runner with 5-layer parallax stack, ColorMatrix grayscale-to-color recovery, and dual-mode controls.",

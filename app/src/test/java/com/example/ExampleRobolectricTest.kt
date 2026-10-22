@@ -42,14 +42,36 @@ class ExampleRobolectricTest {
         val arkanoid = PocGameRegistry.getById("arkanoid")
         assertNotNull(arkanoid)
         assertEquals("Arkanoid", arkanoid?.title)
-        assertEquals(GameStatus.PLANNED, arkanoid?.status)
+        assertEquals(GameStatus.PLAYABLE, arkanoid?.status)
         assertEquals("Fixed Screen", arkanoid?.paradigm)
 
         val chiki = PocGameRegistry.getById("chiki")
         assertNotNull(chiki)
         assertEquals("Chiki", chiki?.title)
-        assertEquals(GameStatus.PLANNED, chiki?.status)
+        assertEquals(GameStatus.NEXT_UP, chiki?.status)
         assertEquals("Classic Platformer", chiki?.paradigm)
+    }
+
+    @Test
+    fun `arkanoid coordinator initializes, docks ball, and launches correctly`() {
+        val context = ApplicationProvider.getApplicationContext<Context>()
+        val audioAdapter = com.pixie.android.audio.AndroidSoundPoolAudioAdapter(context)
+        val hapticAdapter = com.pixie.android.haptic.AndroidHapticAdapter(context)
+
+        val coordinator = com.example.arkanoid.ArkanoidGameCoordinator(
+            audioPort = audioAdapter,
+            hapticPort = hapticAdapter
+        )
+
+        assertEquals(3, coordinator.uiState.value.lives)
+        assertEquals(1, coordinator.uiState.value.levelNumber)
+        org.junit.Assert.assertTrue("Initial ball should be docked on paddle", coordinator.uiState.value.isBallDocked)
+
+        // Launch ball
+        coordinator.onActionTriggered()
+        org.junit.Assert.assertFalse("Ball should be released after action triggered", coordinator.uiState.value.isBallDocked)
+
+        audioAdapter.release()
     }
 
     @Test

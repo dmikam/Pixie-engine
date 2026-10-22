@@ -66,6 +66,7 @@ import com.example.menu.model.PocGameRegistry
 fun GameSelectorScreen(
     onLaunchDinorun: () -> Unit,
     onLaunchRaptor: () -> Unit,
+    onLaunchArkanoid: () -> Unit,
     onOpenRoadmap: () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -193,6 +194,7 @@ fun GameSelectorScreen(
                         when (game.id) {
                             "dinorun" -> onLaunchDinorun()
                             "raptor" -> onLaunchRaptor()
+                            "arkanoid" -> onLaunchArkanoid()
                             else -> selectedGameForDetails = game
                         }
                     },
@@ -246,6 +248,7 @@ fun GameSelectorScreen(
                     when (game.id) {
                         "dinorun" -> onLaunchDinorun()
                         "raptor" -> onLaunchRaptor()
+                        "arkanoid" -> onLaunchArkanoid()
                     }
                 },
                 onOpenRoadmap = {

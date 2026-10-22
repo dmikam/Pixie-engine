@@ -3,7 +3,7 @@ package com.example.menu.model
 import androidx.compose.ui.graphics.Color
 
 enum class GameStatus(val label: String, val badgeColor: Color, val textColor: Color) {
-    PLAYABLE("PLAYABLE NOW", Color(0xFF2E7D32), Color(0xFFE8F5E9)),
+    PLAYABLE("POC CLOSED (PLAYABLE)", Color(0xFF2E7D32), Color(0xFFE8F5E9)),
     NEXT_UP("NEXT IN QUEUE", Color(0xFFE65100), Color(0xFFFFF3E0)),
     PLANNED("PLANNED", Color(0xFF37474F), Color(0xFFECEFF1))
 }
@@ -95,7 +95,7 @@ object PocGameRegistry {
             title = "Arkanoid",
             genre = "Precision Brick Breaker",
             paradigm = "Fixed Screen",
-            status = GameStatus.PLANNED,
+            status = GameStatus.PLAYABLE,
             releaseVersion = "v0.6",
             tagline = "Deflect hyper-velocity energy spheres to shatter defensive cyber-grids.",
             description = "An intense fixed-arena block breaker testing exact reflection physics, paddle impact angle modulation, sub-step continuous collision detection, and multi-tier destructible brick matrices.",
@@ -126,7 +126,7 @@ object PocGameRegistry {
             title = "Chiki",
             genre = "Classic Side-Scrolling Platformer",
             paradigm = "Classic Platformer",
-            status = GameStatus.PLANNED,
+            status = GameStatus.NEXT_UP,
             releaseVersion = "v0.7",
             tagline = "Explore hand-crafted fantasy stages with acrobatic jumping, climbing, and melee combat.",
             description = "Inspired by golden-age 80s/90s arcade platformers like Chiki Chiki Boys / Wonder Boy. Guide an agile hero through treacherous ruins with multi-tier platforms, climbing ladders, and roaming creatures.",

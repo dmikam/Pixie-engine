@@ -1,9 +1,9 @@
 # Raptor: Call of the Shadows — Vertical Arcade Scroller Roadmap
 
 > **Target Version:** Pixie Engine v0.5.0  
-> **Status:** Active Design & Phase 1 Execution  
+> **Status:** CLOSED (Completed & Validated in v0.5.0)  
 > **Genre:** Vertical Top-Down Shoot 'Em Up (Shmup) / Combat Flight Arcade  
-> **Engine Subsystems Validated:** Vertical Camera, Continuous Difficulty System, Zero-Allocation Bullet & Particle Pools, Self-Encapsulated Weapons, Ground Destructibles, Multi-Level Progression.
+> **Engine Subsystems Validated:** Vertical Camera, Continuous Difficulty System, Zero-Allocation Bullet & Particle Pools, Self-Encapsulated Weapons, Ground Destructibles, Multi-Level Progression, Procedural Audio Synthesis.
 
 ---
 

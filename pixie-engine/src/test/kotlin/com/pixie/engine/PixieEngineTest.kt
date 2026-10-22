@@ -511,4 +511,60 @@ class PixieEngineTest {
 
         pool.recycle(proj)
     }
+
+    @Test
+    fun testContinuousCollisionSweptCircleAndReflection() {
+        val box = RectF.fromTopLeft(100f, 100f, 40f, 10f) // thin brick
+
+        // Fast moving ball heading downward straight into the brick
+        val ballStart = Vec2(120f, 80f)
+        val ballVel = Vec2(0f, 300f) // 300 px/sec
+        val dt = 0.1f // ball would travel 30 px, completely skipping across a 10px brick in discrete physics!
+
+        val hit = com.pixie.engine.core.physics.ContinuousCollision.sweepCircleVsAABB(
+            center = ballStart,
+            radius = 3f,
+            velocity = ballVel,
+            dt = dt,
+            box = box
+        )
+
+        assertTrue("High-speed swept circle should detect impact before tunneling", hit.hasHit)
+        assertTrue("Hit time must be within [0, 1]", hit.timeOfImpact in 0f..1f)
+        assertEquals("Hit normal should point upward (Vec2.UP)", Vec2.UP, hit.normal)
+
+        // Verify reflection
+        val reflectedVel = ballVel.reflect(hit.normal)
+        assertEquals(0f, reflectedVel.x, 0.001f)
+        assertEquals(-300f, reflectedVel.y, 0.001f) // Bounced straight back up
+    }
+
+    @Test
+    fun testDestructibleMatrixDestructionAndExplosiveChain() {
+        val matrix = com.pixie.engine.core.matrix.DestructibleMatrixLayer(
+            originX = 10f,
+            originY = 20f,
+            brickWidth = 20f,
+            brickHeight = 10f,
+            gap = 2f
+        )
+
+        val cell00 = com.pixie.engine.core.matrix.BrickCell(0, 0, type = com.pixie.engine.core.matrix.BrickType.STANDARD, hp = 1)
+        val cell01 = com.pixie.engine.core.matrix.BrickCell(0, 1, type = com.pixie.engine.core.matrix.BrickType.EXPLOSIVE, hp = 1)
+        val cell02 = com.pixie.engine.core.matrix.BrickCell(0, 2, type = com.pixie.engine.core.matrix.BrickType.ARMORED, hp = 2, maxHp = 2)
+
+        matrix.loadLayout(1, 3, listOf(cell00, cell01, cell02))
+        assertEquals(3, matrix.remainingDestructibles())
+
+        // Hit the central explosive brick (0, 1)
+        val hitRes = matrix.hitCell(0, 1)
+        assertTrue(hitRes.hit)
+        assertTrue(hitRes.wasDestroyed)
+        assertTrue("Explosive brick should trigger adjacent chained destruction", hitRes.chainedExplosions.isNotEmpty())
+
+        // Verify neighbors were destroyed in explosion
+        assertTrue(cell00.isDestroyed)
+        assertTrue(cell02.isDestroyed)
+        assertEquals(0, matrix.remainingDestructibles())
+    }
 }

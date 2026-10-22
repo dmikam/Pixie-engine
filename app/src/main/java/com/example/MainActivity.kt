@@ -15,6 +15,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import com.example.arkanoid.ui.ArkanoidGameScreen
 import com.example.dinorun.ui.DinoGameScreen
 import com.example.menu.ui.GameSelectorScreen
 import com.example.menu.ui.RoadmapScreen
@@ -25,6 +26,7 @@ enum class AppScreen {
     MENU,
     DINORUN,
     RAPTOR,
+    ARKANOID,
     ROADMAP
 }
 
@@ -55,6 +57,7 @@ fun PixieApp() {
                 GameSelectorScreen(
                     onLaunchDinorun = { currentScreen = AppScreen.DINORUN },
                     onLaunchRaptor = { currentScreen = AppScreen.RAPTOR },
+                    onLaunchArkanoid = { currentScreen = AppScreen.ARKANOID },
                     onOpenRoadmap = { currentScreen = AppScreen.ROADMAP }
                 )
             }
@@ -68,6 +71,11 @@ fun PixieApp() {
                     onExitToMenu = { currentScreen = AppScreen.MENU }
                 )
             }
+            AppScreen.ARKANOID -> {
+                ArkanoidGameScreen(
+                    onExitToMenu = { currentScreen = AppScreen.MENU }
+                )
+            }
             AppScreen.ROADMAP -> {
                 BackHandler { currentScreen = AppScreen.MENU }
                 RoadmapScreen(
@@ -76,6 +84,7 @@ fun PixieApp() {
                         when (gameId) {
                             "dinorun" -> currentScreen = AppScreen.DINORUN
                             "raptor" -> currentScreen = AppScreen.RAPTOR
+                            "arkanoid" -> currentScreen = AppScreen.ARKANOID
                         }
                     }
                 )

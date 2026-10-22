@@ -16,6 +16,13 @@ data class Vec2(val x: Float = 0f, val y: Float = 0f) {
     fun length(): Float = sqrt(x * x + y * y)
     fun lengthSquared(): Float = x * x + y * y
 
+    fun dot(other: Vec2): Float = x * other.x + y * other.y
+
+    fun reflect(normal: Vec2): Vec2 {
+        val d = 2f * this.dot(normal)
+        return Vec2(x - d * normal.x, y - d * normal.y)
+    }
+
     fun normalized(): Vec2 {
         val len = length()
         return if (len > 0.0001f) Vec2(x / len, y / len) else ZERO
