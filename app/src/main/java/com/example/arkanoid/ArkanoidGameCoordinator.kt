@@ -27,6 +27,8 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlin.math.max
 
+import com.pixie.engine.core.ports.InputPort
+
 data class ArkanoidUiState(
     val score: Int = 0,
     val highScore: Int = 0,
@@ -46,7 +48,8 @@ data class ArkanoidUiState(
 
 class ArkanoidGameCoordinator(
     private val audioPort: AudioPort,
-    private val hapticPort: HapticPort
+    private val hapticPort: HapticPort,
+    val inputPort: InputPort? = null
 ) {
     val engine: PixieEngine = PixieEngine(
         virtualResolution = VirtualResolution(320, 180),
@@ -81,6 +84,7 @@ class ArkanoidGameCoordinator(
     private var isVictory: Boolean = false
     private var isLevelCleared: Boolean = false
     private var isPaused: Boolean = false
+    private var wasActionPressedLastFrame: Boolean = false
 
     private val _uiState = MutableStateFlow(ArkanoidUiState())
     val uiState: StateFlow<ArkanoidUiState> = _uiState.asStateFlow()
@@ -91,11 +95,28 @@ class ArkanoidGameCoordinator(
         engine.cloudLayer.isEnabled = false
         engine.backgroundLayer.isEnabled = false
         engine.groundLayer.isEnabled = false
+        engine.itemsLayer.isEnabled = false
+        engine.foregroundLayer.isEnabled = false
 
-        // Register destructible matrix layer
+        // 1. Register arena background & borders layer (order = 50)
+        val arenaBackgroundLayer = object : PixieLayer {
+            override val name: String = "Layer_ArkanoidBackground"
+            override val order: Int = 50
+            override var isEnabled: Boolean = true
+            override var isGridEnabled: Boolean = false
+
+            override fun update(dt: Float, context: GameContext) {}
+
+            override fun render(batch: RenderBatchPort, camera: PixieCamera, context: GameContext) {
+                renderArena(batch, camera)
+            }
+        }
+        engine.layerStack.addLayer(arenaBackgroundLayer)
+
+        // 2. Register destructible matrix layer (order = 450)
         engine.layerStack.addLayer(matrixLayer)
 
-        // Register custom gamefield layer for arena borders, paddle, balls, capsules, lasers
+        // 3. Register custom gamefield layer for paddle, balls, capsules, lasers (order = 500)
         val arkanoidPlayfieldLayer = object : PixieLayer {
             override val name: String = "Layer_ArkanoidPlayfield"
             override val order: Int = 500
@@ -105,7 +126,6 @@ class ArkanoidGameCoordinator(
             override fun update(dt: Float, context: GameContext) {}
 
             override fun render(batch: RenderBatchPort, camera: PixieCamera, context: GameContext) {
-                renderArena(batch, camera)
                 paddle.render(batch, camera)
                 for (b in balls) b.render(batch, camera)
                 for (c in capsules) c.render(batch, camera)
@@ -193,6 +213,19 @@ class ArkanoidGameCoordinator(
         )
     }
 
+    fun fireLasers(): Boolean {
+        if (isGameOver || isVictory || isPaused) return false
+        if (paddle.consumeLaserFire()) {
+            val halfW = paddle.currentWidth * 0.5f
+            lasers.add(ArkanoidLaser(Vec2(paddle.x - halfW + 1f, paddle.y - 3f)))
+            lasers.add(ArkanoidLaser(Vec2(paddle.x + halfW - 1f, paddle.y - 3f)))
+            audioPort.playSound(AudioEvent.FIRE_PRIMARY)
+            hapticPort.trigger(HapticFeedbackType.LIGHT)
+            return true
+        }
+        return false
+    }
+
     fun onActionTriggered() {
         if (isGameOver || isVictory || isPaused) return
 
@@ -208,12 +241,8 @@ class ArkanoidGameCoordinator(
         }
 
         // 2. If laser active, fire twin lasers
-        if (!launched && paddle.consumeLaserFire()) {
-            val halfW = paddle.currentWidth * 0.5f
-            lasers.add(ArkanoidLaser(Vec2(paddle.x - halfW + 1f, paddle.y - 3f)))
-            lasers.add(ArkanoidLaser(Vec2(paddle.x + halfW - 1f, paddle.y - 3f)))
-            audioPort.playSound(AudioEvent.FIRE_PRIMARY)
-            hapticPort.trigger(HapticFeedbackType.LIGHT)
+        if (!launched) {
+            fireLasers()
         }
 
         updateUiState()
@@ -221,6 +250,25 @@ class ArkanoidGameCoordinator(
 
     fun update(dt: Float) {
         if (isPaused || isGameOver || isVictory || isLevelCleared) return
+
+        // 0. Continuous movement & immediate action from InputPort
+        inputPort?.let { input ->
+            if (input.moveX != 0f) {
+                val paddleSpeed = 220f
+                targetPaddleX = (targetPaddleX + input.moveX * paddleSpeed * dt).coerceIn(
+                    arenaBounds.left + paddle.currentWidth * 0.5f,
+                    arenaBounds.right - paddle.currentWidth * 0.5f
+                )
+            }
+            if (input.isActionPressed) {
+                if (!wasActionPressedLastFrame) {
+                    onActionTriggered()
+                } else if (paddle.isLaser) {
+                    fireLasers()
+                }
+            }
+            wasActionPressedLastFrame = input.isActionPressed
+        }
 
         // 1. Update Paddle
         paddle.update(dt, targetPaddleX, arenaBounds.left, arenaBounds.right)

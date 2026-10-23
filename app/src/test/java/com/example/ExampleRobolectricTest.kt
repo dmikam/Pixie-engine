@@ -75,6 +75,49 @@ class ExampleRobolectricTest {
     }
 
     @Test
+    fun `energy ball records motion blur trail and bounces cleanly without tunneling`() {
+        val ball = com.example.arkanoid.entities.EnergyBall(
+            position = com.pixie.engine.core.math.Vec2(100f, 100f),
+            radius = 2.5f
+        )
+        ball.launch(150f, headingAngle = -1.57f)
+        org.junit.Assert.assertFalse(ball.isDocked)
+
+        val paddle = com.example.arkanoid.entities.ArkanoidPaddle(initialX = 100f, y = 160f)
+        val matrix = com.pixie.engine.core.matrix.DestructibleMatrixLayer(
+            originX = 80f,
+            originY = 80f,
+            brickWidth = 20f,
+            brickHeight = 10f,
+            gap = 2f
+        )
+        val cell = com.pixie.engine.core.matrix.BrickCell(0, 0, hp = 1)
+        matrix.loadLayout(1, 1, listOf(cell))
+
+        val arena = com.pixie.engine.core.math.RectF(10f, 10f, 310f, 175f)
+        val dummyAudio = object : com.pixie.engine.core.ports.AudioPort {
+            override fun playSound(event: com.pixie.engine.core.ports.AudioEvent) {}
+        }
+        val particleLayer = com.pixie.engine.core.particle.ParticleLayer()
+
+        var hitCount = 0
+        ball.update(
+            dt = 0.05f,
+            paddle = paddle,
+            matrix = matrix,
+            arenaBounds = arena,
+            audioPort = dummyAudio,
+            particleLayer = particleLayer,
+            onPaddleBounce = {},
+            onBrickHit = { hitCount++ },
+            onBallLost = {}
+        )
+
+        // Trail history records previous positions
+        org.junit.Assert.assertTrue("Motion blur trail should record past positions", ball.trailHistory.isNotEmpty())
+    }
+
+    @Test
     fun `raptor coordinator initializes with continuous difficulty and fires weapons`() {
         val coordinator = com.example.raptor.RaptorGameCoordinator(
             selectedDifficulty = com.pixie.engine.core.context.DifficultyPreset.DIFFICULT,

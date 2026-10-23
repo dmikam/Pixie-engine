@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
@@ -56,6 +57,8 @@ import androidx.compose.ui.window.Dialog
 import com.example.arkanoid.ArkanoidGameCoordinator
 import com.pixie.android.audio.AndroidSoundPoolAudioAdapter
 import com.pixie.android.haptic.AndroidHapticAdapter
+import com.pixie.android.input.ArcadeButton
+import com.pixie.android.input.DualModeInputAdapter
 import com.pixie.android.ui.PixieGameCanvas
 
 @Composable
@@ -66,11 +69,13 @@ fun ArkanoidGameScreen(
     val context = LocalContext.current
     val audioAdapter = remember { AndroidSoundPoolAudioAdapter(context) }
     val hapticAdapter = remember { AndroidHapticAdapter(context) }
+    val inputAdapter = remember { DualModeInputAdapter() }
 
     val coordinator = remember {
         ArkanoidGameCoordinator(
             audioPort = audioAdapter,
-            hapticPort = hapticAdapter
+            hapticPort = hapticAdapter,
+            inputPort = inputAdapter
         ).apply {
             engine.start()
         }
@@ -82,6 +87,7 @@ fun ArkanoidGameScreen(
         onDispose {
             coordinator.engine.stop()
             audioAdapter.release()
+            inputAdapter.reset()
         }
     }
 
@@ -93,17 +99,46 @@ fun ArkanoidGameScreen(
         }
     }
 
-    Column(
+    Box(
         modifier = modifier
             .fillMaxSize()
             .background(Color(0xFF090C10))
-            .statusBarsPadding()
     ) {
-        // 1. Top HUD Header
+        // 1. Fullscreen Main Game Canvas with full-screen touch drag & mousedown tap
+        PixieGameCanvas(
+            engine = coordinator.engine,
+            modifier = Modifier
+                .fillMaxSize()
+                .pointerInput(Unit) {
+                    detectTapGestures(
+                        onPress = {
+                            coordinator.onActionTriggered()
+                        }
+                    )
+                }
+                .pointerInput(Unit) {
+                    detectDragGestures { change, dragAmount ->
+                        change.consume()
+                        // Move paddle by horizontal drag distance
+                        coordinator.movePaddleByDelta(dragAmount.x * 0.45f)
+                    }
+                },
+            onFrameTick = { dt ->
+                coordinator.update(dt)
+            }
+        )
+
+        // 2. Floating Sleek Top HUD Overlay
         Surface(
-            modifier = Modifier.fillMaxWidth(),
-            color = Color(0xFF131720),
-            tonalElevation = 4.dp
+            modifier = Modifier
+                .align(Alignment.TopCenter)
+                .fillMaxWidth()
+                .statusBarsPadding()
+                .padding(horizontal = 10.dp, vertical = 6.dp),
+            color = Color(0xD910141C),
+            shape = RoundedCornerShape(12.dp),
+            border = androidx.compose.foundation.BorderStroke(1.dp, Color(0x3300E5FF)),
+            tonalElevation = 6.dp
         ) {
             Column(
                 modifier = Modifier
@@ -239,135 +274,124 @@ fun ArkanoidGameScreen(
             }
         }
 
-        // 2. Main Game Canvas Area
-        Box(
-            modifier = Modifier
-                .weight(1f)
-                .fillMaxWidth()
-                .pointerInput(Unit) {
-                    detectTapGestures {
-                        coordinator.onActionTriggered()
-                    }
-                }
-                .pointerInput(Unit) {
-                    detectDragGestures { change, dragAmount ->
-                        change.consume()
-                        // Move paddle by horizontal drag distance
-                        coordinator.movePaddleByDelta(dragAmount.x * 0.45f)
-                    }
-                }
-        ) {
-            PixieGameCanvas(
-                engine = coordinator.engine,
-                modifier = Modifier.fillMaxSize(),
-                onFrameTick = { dt ->
-                    coordinator.update(dt)
-                }
-            )
-
-            // Serve Hint Overlay when ball is docked
-            if (state.isBallDocked && !state.isPaused && !state.isGameOver) {
-                Surface(
-                    shape = RoundedCornerShape(6.dp),
-                    color = Color(0xCC000000),
-                    border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFF00E5FF)),
-                    modifier = Modifier
-                        .align(Alignment.Center)
-                        .padding(16.dp)
+        // 3. Serve Hint Overlay when ball is docked
+        if (state.isBallDocked && !state.isPaused && !state.isGameOver) {
+            Surface(
+                shape = RoundedCornerShape(8.dp),
+                color = Color(0xD9000000),
+                border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFF00E5FF)),
+                modifier = Modifier
+                    .align(Alignment.Center)
+                    .padding(16.dp)
+            ) {
+                Row(
+                    modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp),
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Row(
-                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Bolt,
-                            contentDescription = null,
-                            tint = Color(0xFFFFD600),
-                            modifier = Modifier.size(16.dp)
-                        )
-                        Spacer(modifier = Modifier.width(6.dp))
-                        Text(
-                            text = "TAP SCREEN OR LAUNCH TO SERVE",
-                            color = Color(0xFFE0F7FA),
-                            fontSize = 11.sp,
-                            fontWeight = FontWeight.Bold,
-                            fontFamily = FontFamily.Monospace
-                        )
-                    }
+                    Icon(
+                        imageVector = Icons.Default.Bolt,
+                        contentDescription = null,
+                        tint = Color(0xFFFFD600),
+                        modifier = Modifier.size(18.dp)
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        text = "TAP SCREEN OR ACTION TO SERVE",
+                        color = Color(0xFFE0F7FA),
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Bold,
+                        fontFamily = FontFamily.Monospace
+                    )
                 }
             }
         }
 
-        // 3. Bottom Controls Deck
+        // 4. Floating Bottom Controls Deck (Overlay over bottom)
         Surface(
-            modifier = Modifier.fillMaxWidth(),
-            color = Color(0xFF131720),
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .fillMaxWidth()
+                .navigationBarsPadding()
+                .padding(horizontal = 12.dp, vertical = 8.dp),
+            color = Color(0xB810141C),
+            shape = RoundedCornerShape(14.dp),
+            border = androidx.compose.foundation.BorderStroke(1.dp, Color(0x33FFFFFF)),
             tonalElevation = 6.dp
         ) {
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 14.dp, vertical = 10.dp),
+                    .padding(horizontal = 10.dp, vertical = 8.dp),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                // Steer Left Button
-                Button(
-                    onClick = { coordinator.movePaddleByDelta(-18f) },
-                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF263238)),
+                // Steer Left Button (continuous motion on hold, triggers on mousedown)
+                ArcadeButton(
+                    onPressDown = { inputAdapter.setButtonMoveX(-1f) },
+                    onPressUp = { if (inputAdapter.moveX < 0f) inputAdapter.setButtonMoveX(0f) },
                     shape = RoundedCornerShape(8.dp),
+                    backgroundColor = Color(0x99263238),
+                    pressedColor = Color(0xDD37474F),
                     modifier = Modifier
                         .size(width = 68.dp, height = 48.dp)
                         .testTag("paddle_left_button")
-                ) {
+                ) { isPressed ->
                     Icon(
                         imageVector = Icons.Default.ChevronLeft,
                         contentDescription = "Steer Left",
-                        tint = Color.White
+                        tint = if (isPressed) Color(0xFF00E5FF) else Color.White
                     )
                 }
 
-                // Center Action Button (Launch Ball or Fire Laser)
-                Button(
-                    onClick = { coordinator.onActionTriggered() },
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = if (state.activePowerUp?.contains("LASER") == true) Color(0xFFD50000) else Color(0xFF0091EA)
-                    ),
+                // Center Action Button (triggers immediately on mousedown, continuous fire for lasers)
+                ArcadeButton(
+                    onPressDown = { inputAdapter.setButtonAction(true) },
+                    onPressUp = { inputAdapter.setButtonAction(false) },
                     shape = RoundedCornerShape(8.dp),
+                    backgroundColor = if (state.activePowerUp?.contains("LASER") == true) Color(0xD9D50000) else Color(0xD90091EA),
+                    pressedColor = if (state.activePowerUp?.contains("LASER") == true) Color(0xFFFF1744) else Color(0xFF00E5FF),
                     modifier = Modifier
                         .height(48.dp)
                         .weight(1f)
                         .padding(horizontal = 10.dp)
                         .testTag("paddle_action_button")
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Bolt,
-                        contentDescription = null,
-                        tint = Color.White,
-                        modifier = Modifier.size(18.dp)
-                    )
-                    Spacer(modifier = Modifier.width(6.dp))
-                    Text(
-                        text = if (state.isBallDocked) "SERVE BALL" else if (state.activePowerUp?.contains("LASER") == true) "FIRE LASERS" else "ACTION",
-                        fontWeight = FontWeight.Bold,
-                        fontFamily = FontFamily.Monospace,
-                        fontSize = 12.sp
-                    )
+                ) { isPressed ->
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.Center
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Bolt,
+                            contentDescription = null,
+                            tint = Color.White,
+                            modifier = Modifier.size(18.dp)
+                        )
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text(
+                            text = if (state.isBallDocked) "SERVE BALL" else if (state.activePowerUp?.contains("LASER") == true) "FIRE LASERS" else "ACTION",
+                            fontWeight = FontWeight.Bold,
+                            fontFamily = FontFamily.Monospace,
+                            fontSize = 12.sp,
+                            color = Color.White
+                        )
+                    }
                 }
 
-                // Steer Right Button
-                Button(
-                    onClick = { coordinator.movePaddleByDelta(18f) },
-                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF263238)),
+                // Steer Right Button (continuous motion on hold, triggers on mousedown)
+                ArcadeButton(
+                    onPressDown = { inputAdapter.setButtonMoveX(1f) },
+                    onPressUp = { if (inputAdapter.moveX > 0f) inputAdapter.setButtonMoveX(0f) },
                     shape = RoundedCornerShape(8.dp),
+                    backgroundColor = Color(0x99263238),
+                    pressedColor = Color(0xDD37474F),
                     modifier = Modifier
                         .size(width = 68.dp, height = 48.dp)
                         .testTag("paddle_right_button")
-                ) {
+                ) { isPressed ->
                     Icon(
                         imageVector = Icons.Default.ChevronRight,
                         contentDescription = "Steer Right",
-                        tint = Color.White
+                        tint = if (isPressed) Color(0xFF00E5FF) else Color.White
                     )
                 }
             }

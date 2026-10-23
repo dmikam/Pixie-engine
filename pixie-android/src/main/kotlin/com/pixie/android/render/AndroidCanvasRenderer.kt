@@ -76,7 +76,8 @@ class AndroidCanvasRenderer(
     ) {
         val canvas = targetCanvas ?: return
         paint.color = applySaturationToColor(color, saturation)
-        paint.alpha = (alpha.coerceIn(0f, 1f) * 255).toInt()
+        val colorAlpha = (Color.alpha(color) / 255f) * alpha.coerceIn(0f, 1f)
+        paint.alpha = (colorAlpha * 255).toInt()
 
         if (isGridActive && height >= 1f) {
             val rows = height.toInt()
