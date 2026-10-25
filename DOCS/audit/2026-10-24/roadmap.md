@@ -69,7 +69,7 @@ To advance the roadmap step-by-step in subsequent chat sessions, use the standar
   - **Action**: Extract floating draggable button deck and custom button graphic painters into separate files.
   - **Rationale**: Brings control deck under 350 lines and decouples floating gesture state from standard dock layouts.
 
-- [ ] **Task 2.3: Modularize `DinoPauseDialog.kt` (407 lines) and `DinoHud.kt` (322 lines)**
+- [x] **Task 2.3: Modularize `DinoPauseDialog.kt` (407 lines) and `DinoHud.kt` (322 lines)**
   - **Target File(s)**: `app/src/main/java/com/example/dinorun/ui/DinoPauseDialog.kt`, `app/src/main/java/com/example/dinorun/ui/DinoHud.kt`
   - **Action**: Break down dialog settings rows and HUD telemetry pills into focused sub-composables under 40 lines.
   - **Rationale**: Composes UI with small, single-purpose functions according to Rule 3.
@@ -78,7 +78,7 @@ To advance the roadmap step-by-step in subsequent chat sessions, use the standar
 
 ## Priority 3: API Ergonomics & Reusability Enhancements
 
-- [ ] **Task 3.1: Adopt `PixieGame` Fluent Builder in `DinoGameScreen.kt`**
+- [x] **Task 3.1: Adopt `PixieGame` Fluent Builder in `DinoGameScreen.kt`**
   - **Target File(s)**: `app/src/main/java/com/example/dinorun/ui/DinoGameScreen.kt`
   - **Action**: Refactor `DinoGameScreen` to use the chainable `PixieGame(coordinator.engine).input(...).haptic(...).onTap(...).portrait(...).landscape(...).Render()` DSL, eliminating manual `focusRequester`, `onPreviewKeyEvent`, and `PixieGameCanvas` wiring.
   - **Rationale**: Enforces Rule 1 (Fluent / Chainable API & Declarative Simplicity) across all showcase games.

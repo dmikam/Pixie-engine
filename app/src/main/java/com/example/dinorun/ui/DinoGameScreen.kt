@@ -1,8 +1,6 @@
 package com.example.dinorun.ui
 
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.safeDrawingPadding
+import androidx.activity.compose.BackHandler
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
@@ -14,30 +12,30 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.unit.dp
 import com.example.dinorun.DinoGameCoordinator
 import com.pixie.android.audio.AndroidSoundPoolAudioAdapter
 import com.pixie.android.haptic.AndroidHapticAdapter
-import androidx.activity.compose.BackHandler
-import androidx.compose.foundation.focusable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.ui.focus.FocusRequester
-import androidx.compose.ui.focus.focusRequester
-import androidx.compose.ui.input.key.onPreviewKeyEvent
-import android.view.KeyEvent
 import com.pixie.android.input.ControlMode
 import com.pixie.android.input.DualModeInputAdapter
-import com.pixie.android.ui.PixieGameCanvas
+import com.pixie.android.ui.PixieGame
 import com.pixie.engine.core.ports.AudioEvent
-import com.pixie.engine.core.ports.HapticFeedbackType
 
+/**
+ * Dinorun Game Screen refactored to use the PixieGame fluent builder DSL.
+ *
+ * Adheres to AGENTS.md rules:
+ * - Fluent, chainable builder assembly.
+ * - Declarative simplicity without manual focus/hardware key boilerplate.
+ * - Responsive layouts for portrait and landscape form factors.
+ * - Modular modal and HUD delegation.
+ */
 @Composable
 fun DinoGameScreen(
     modifier: Modifier = Modifier,
     onExitToMenu: () -> Unit = {}
 ) {
     val context = LocalContext.current
-
-    // Initialize platform adapters
     val audioAdapter = remember { AndroidSoundPoolAudioAdapter(context) }
     val hapticAdapter = remember { AndroidHapticAdapter(context) }
     val inputAdapter = remember { DualModeInputAdapter() }
@@ -52,7 +50,6 @@ fun DinoGameScreen(
         }
     }
 
-    // UI observable state
     var isPaused by remember { mutableStateOf(false) }
     var isGameOver by remember { mutableStateOf(false) }
     var isSoundEnabled by remember { mutableStateOf(!audioAdapter.isMuted) }
@@ -76,55 +73,22 @@ fun DinoGameScreen(
         onDispose {
             coordinator.engine.stop()
             audioAdapter.release()
+            inputAdapter.reset()
         }
     }
 
     BackHandler {
-        coordinator.engine.pause()
-        onExitToMenu()
+        if (!isPaused && !isGameOver) {
+            isPaused = true
+            coordinator.engine.pause()
+        } else {
+            coordinator.engine.pause()
+            onExitToMenu()
+        }
     }
 
-    val focusRequester = remember { FocusRequester() }
-    LaunchedEffect(Unit) {
-        focusRequester.requestFocus()
-    }
-
-    Box(
-        modifier = modifier
-            .fillMaxSize()
-            .safeDrawingPadding()
-            .focusRequester(focusRequester)
-            .focusable()
-            .onPreviewKeyEvent { keyEvent ->
-                val nativeEvent = keyEvent.nativeKeyEvent
-                val isDown = nativeEvent.action == KeyEvent.ACTION_DOWN
-                inputAdapter.handlePhysicalKeyEvent(nativeEvent.keyCode, isDown)
-            }
-    ) {
-        // Main Game Canvas with synchronized frame ticks
-        PixieGameCanvas(
-            engine = coordinator.engine,
-            renderer = coordinator.renderer,
-            inputAdapter = inputAdapter,
-            modifier = Modifier.fillMaxSize(),
-            onFrameTick = { deltaSeconds ->
-                if (!isPaused && !isGameOver) {
-                    coordinator.updateInputs()
-                    coordinator.checkCustomCollisions()
-
-                    // Sync HUD values
-                    score = coordinator.engine.context.score
-                    distance = coordinator.engine.context.distance
-                    livesLeft = coordinator.engine.context.livesLeft
-                    colorProgress = coordinator.engine.colorRecovery.progress
-                    fps = coordinator.engine.loop.currentFps
-                    isGameOver = coordinator.engine.context.isGameOver
-                }
-            }
-        )
-
-        // Overlay HUD
-        DinoHud(
+    val topHudContent: @Composable () -> Unit = {
+        DinoTopHudBar(
             score = score,
             distanceMeters = distance,
             livesLeft = livesLeft,
@@ -133,8 +97,11 @@ fun DinoGameScreen(
             currentMode = currentControlMode,
             pixelsGap = pixelsGap,
             onToggleControlMode = {
-                val nextMode = if (currentControlMode == ControlMode.VIRTUAL_BUTTONS)
-                    ControlMode.TOUCH_GESTURES else ControlMode.VIRTUAL_BUTTONS
+                val nextMode = if (currentControlMode == ControlMode.VIRTUAL_BUTTONS) {
+                    ControlMode.TOUCH_GESTURES
+                } else {
+                    ControlMode.VIRTUAL_BUTTONS
+                }
                 currentControlMode = nextMode
                 inputAdapter.currentMode = nextMode
             },
@@ -150,42 +117,76 @@ fun DinoGameScreen(
             onExitToMenu = {
                 coordinator.engine.pause()
                 onExitToMenu()
-            },
-            inputAdapter = inputAdapter
+            }
         )
+    }
 
-        // Pause Dialog with Layer Inspector and World Switcher
-        if (isPaused) {
-            DinoPauseDialog(
-                layerStack = coordinator.engine.layerStack,
-                currentWorld = coordinator.currentWorld,
+    val controlDeckContent: @Composable () -> Unit = {
+        if (currentControlMode == ControlMode.VIRTUAL_BUTTONS) {
+            DinoVirtualControlDeck(inputAdapter = inputAdapter)
+        }
+    }
+
+    // Fluent PixieGame assembly
+    PixieGame(coordinator.engine)
+        .input(inputAdapter)
+        .haptic(hapticAdapter)
+        .renderer(coordinator.renderer)
+        .onTap {
+            if (currentControlMode == ControlMode.TOUCH_GESTURES && !isPaused && !isGameOver) {
+                val wasGrounded = coordinator.player.isGrounded
+                coordinator.player.jump()
+                if (wasGrounded && !coordinator.player.isGrounded) {
+                    audioAdapter.playSound(AudioEvent.JUMP)
+                }
+            }
+        }
+        .onFrameTick {
+            if (!isPaused && !isGameOver) {
+                coordinator.updateInputs()
+                coordinator.checkCustomCollisions()
+
+                // Sync HUD values
+                score = coordinator.engine.context.score
+                distance = coordinator.engine.context.distance
+                livesLeft = coordinator.engine.context.livesLeft
+                colorProgress = coordinator.engine.colorRecovery.progress
+                fps = coordinator.engine.loop.currentFps
+                isGameOver = coordinator.engine.context.isGameOver
+            }
+        }
+        // ---------- PORTRAIT LAYOUT ----------
+        .portrait(maxWidth = 600.dp) {
+            topOverlayStatusBar { topHudContent() }
+            bottomOverlayDeck { controlDeckContent() }
+        }
+        // ---------- LANDSCAPE LAYOUT ----------
+        .landscape(maxHeight = 600.dp) {
+            topOverlayStatusBar { topHudContent() }
+            bottomOverlayDeck { controlDeckContent() }
+        }
+        // ---------- MODAL OVERLAYS ----------
+        .overlays {
+            DinoModals(
+                isPaused = isPaused,
+                isGameOver = isGameOver,
+                coordinator = coordinator,
+                audioAdapter = audioAdapter,
+                hapticAdapter = hapticAdapter,
                 isSoundEnabled = isSoundEnabled,
                 isHapticEnabled = isHapticEnabled,
-                onToggleSound = { enabled ->
-                    isSoundEnabled = enabled
-                    audioAdapter.isMuted = !enabled
-                    if (enabled) {
-                        audioAdapter.playSound(AudioEvent.BUTTON_CLICK)
-                    }
-                },
-                onToggleHaptic = { enabled ->
-                    isHapticEnabled = enabled
-                    hapticAdapter.isEnabled = enabled
-                    if (enabled) {
-                        hapticAdapter.trigger(HapticFeedbackType.LIGHT)
-                    }
-                },
-                onSelectWorld = { world ->
-                    coordinator.switchWorld(world)
-                    isPaused = false
-                    coordinator.engine.resume()
-                },
+                score = score,
+                distance = distance,
+                colorProgress = colorProgress,
+                onSoundToggled = { isSoundEnabled = it },
+                onHapticToggled = { isHapticEnabled = it },
                 onResume = {
                     isPaused = false
                     coordinator.engine.resume()
                 },
                 onRestart = {
                     isPaused = false
+                    isGameOver = false
                     coordinator.restart()
                 },
                 onExitToMenu = {
@@ -195,22 +196,6 @@ fun DinoGameScreen(
                 }
             )
         }
-
-        // Game Over Dialog
-        if (isGameOver) {
-            DinoGameOverDialog(
-                score = score,
-                distanceMeters = distance,
-                colorRecoveryPercent = (colorProgress * 100).toInt(),
-                onRestart = {
-                    coordinator.restart()
-                    isGameOver = false
-                },
-                onExitToMenu = {
-                    coordinator.engine.pause()
-                    onExitToMenu()
-                }
-            )
-        }
-    }
+        // ---------- RENDER CANVAS & LAYOUT ----------
+        .Render(modifier = modifier)
 }

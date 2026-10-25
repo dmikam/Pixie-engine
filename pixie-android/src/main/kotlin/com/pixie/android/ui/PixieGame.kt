@@ -50,6 +50,7 @@ import androidx.compose.ui.input.pointer.pointerInput
 import com.pixie.android.input.DualModeInputAdapter
 import com.pixie.android.input.FloatingAdjustableDeck
 import com.pixie.android.input.InputSourceType
+import com.pixie.android.render.AndroidCanvasRenderer
 import com.pixie.engine.core.PixieEngine
 import com.pixie.engine.core.ports.HapticPort
 
@@ -64,6 +65,7 @@ class PixieGame(val engine: PixieEngine) {
 
     private var inputAdapter: DualModeInputAdapter? = null
     private var hapticPort: HapticPort? = null
+    private var renderer: AndroidCanvasRenderer? = null
     private val portraitBreakpoints = mutableListOf<PortraitBreakpoint>()
     private val landscapeBreakpoints = mutableListOf<LandscapeBreakpoint>()
     private var overlaysContent: (@Composable () -> Unit)? = null
@@ -80,6 +82,10 @@ class PixieGame(val engine: PixieEngine) {
 
     fun haptic(hapticPort: HapticPort) = apply {
         this.hapticPort = hapticPort
+    }
+
+    fun renderer(renderer: AndroidCanvasRenderer) = apply {
+        this.renderer = renderer
     }
 
     /**
@@ -179,6 +185,12 @@ class PixieGame(val engine: PixieEngine) {
             }
             PixieGameCanvas(
                 engine = engine,
+                renderer = renderer ?: remember(engine) {
+                    AndroidCanvasRenderer(
+                        resolution = engine.virtualResolution,
+                        pixelsGap = engine.pixelsGap
+                    )
+                },
                 inputAdapter = inputAdapter,
                 modifier = finalModifier,
                 onFrameTick = frameTickHandler
@@ -284,8 +296,16 @@ class PixieGame(val engine: PixieEngine) {
                             }
 
                             // Overlays inside game canvas
-                            activeLayout.topOverlayStatusBar?.invoke()
-                            activeLayout.bottomOverlayDeck?.invoke()
+                            activeLayout.topOverlayStatusBar?.let { topOverlay ->
+                                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.TopCenter) {
+                                    topOverlay()
+                                }
+                            }
+                            activeLayout.bottomOverlayDeck?.let { bottomOverlay ->
+                                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.BottomCenter) {
+                                    bottomOverlay()
+                                }
+                            }
 
                             if (activeLayout.floatingButtons.isNotEmpty()) {
                                 FloatingAdjustableDeck(buttons = activeLayout.floatingButtons)
@@ -326,8 +346,16 @@ class PixieGame(val engine: PixieEngine) {
                         }
 
                         // Overlay bars over canvas
-                        activeLayout.topOverlayStatusBar?.invoke()
-                        activeLayout.bottomOverlayDeck?.invoke()
+                        activeLayout.topOverlayStatusBar?.let { topOverlay ->
+                            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.TopCenter) {
+                                topOverlay()
+                            }
+                        }
+                        activeLayout.bottomOverlayDeck?.let { bottomOverlay ->
+                            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.BottomCenter) {
+                                bottomOverlay()
+                            }
+                        }
 
                         if (activeLayout.floatingButtons.isNotEmpty()) {
                             FloatingAdjustableDeck(buttons = activeLayout.floatingButtons)
