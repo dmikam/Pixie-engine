@@ -107,7 +107,7 @@ To advance the roadmap step-by-step in subsequent chat sessions, use the standar
   - **Action**: Test responsive breakpoint matching and slot resolution in portrait and landscape.
   - **Rationale**: Ensures robustness of engine UI DSL across varied screen form factors.
 
-- [ ] **Task 4.3: Retro CRT & Audio Polish**
+- [x] **Task 4.3: Retro CRT & Audio Polish**
   - **Target File(s)**: `pixie-android/src/main/kotlin/com/pixie/android/audio/RetroAudioSynthesizer.kt`
   - **Action**: Optimize procedural sound generation buffer allocation to eliminate transient audio stutter on lower-end devices.
   - **Rationale**: Enhances craftsmanship and retro audio quality.
