@@ -390,4 +390,31 @@ class RaptorGameCoordinator(
             particleLayer = engine.particleLayer
         )
     }
+
+    /**
+     * Steers the player craft by a delta in virtual game units,
+     * maintaining safe margins within playfield bounds.
+     */
+    fun movePlayer(deltaX: Float, deltaY: Float) {
+        val currentTarget = playerShip.targetPosition
+        playerShip.targetPosition = Vec2(
+            (currentTarget.x + deltaX).coerceIn(4f, 218f),
+            (currentTarget.y + deltaY).coerceIn(24f, 290f)
+        )
+    }
+
+    /**
+     * Handles initial drag contact in virtual game coordinates, acquiring control
+     * if the touch begins near the player craft.
+     */
+    fun handleDragStart(virtualX: Float, virtualY: Float) {
+        val touchPos = Vec2(virtualX, virtualY)
+        val dist = (touchPos - playerShip.position).length()
+        if (dist < 75f) {
+            playerShip.targetPosition = Vec2(
+                virtualX.coerceIn(4f, 218f),
+                virtualY.coerceIn(24f, 290f)
+            )
+        }
+    }
 }

@@ -83,7 +83,7 @@ To advance the roadmap step-by-step in subsequent chat sessions, use the standar
   - **Action**: Refactor `DinoGameScreen` to use the chainable `PixieGame(coordinator.engine).input(...).haptic(...).onTap(...).portrait(...).landscape(...).Render()` DSL, eliminating manual `focusRequester`, `onPreviewKeyEvent`, and `PixieGameCanvas` wiring.
   - **Rationale**: Enforces Rule 1 (Fluent / Chainable API & Declarative Simplicity) across all showcase games.
 
-- [ ] **Task 3.2: Encapsulate Raptor Touch Drag Gestures via `PixieGame` DSL**
+- [x] **Task 3.2: Encapsulate Raptor Touch Drag Gestures via `PixieGame` DSL**
   - **Target File(s)**: `app/src/main/java/com/example/raptor/ui/RaptorGameScreen.kt`
   - **Action**: Replace manual `detectDragGestures` with letterbox scaling math in `RaptorGameScreen` by registering drag listeners through the `PixieGame` DSL or coordinator adapter.
   - **Rationale**: Adheres to Rule 1: canvas gesture detection and letterboxed resolution scaling belong encapsulated inside engine DSLs rather than copied across game screens.

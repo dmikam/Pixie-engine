@@ -47,6 +47,7 @@ import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.input.pointer.PointerInputChange
 import androidx.compose.ui.input.pointer.pointerInput
+import kotlin.math.min
 import com.pixie.android.input.DualModeInputAdapter
 import com.pixie.android.input.FloatingAdjustableDeck
 import com.pixie.android.input.InputSourceType
@@ -74,6 +75,8 @@ class PixieGame(val engine: PixieEngine) {
     private var tapHandler: ((Offset) -> Unit)? = null
     private var dragDeltaHandler: ((Float, Float) -> Unit)? = null
     private var dragRawHandler: ((PointerInputChange, Offset) -> Unit)? = null
+    private var virtualDragDeltaHandler: ((dx: Float, dy: Float) -> Unit)? = null
+    private var virtualDragStartHandler: ((virtualX: Float, virtualY: Float) -> Unit)? = null
     private var frameTickHandler: ((Float) -> Unit)? = null
 
     fun input(inputAdapter: DualModeInputAdapter) = apply {
@@ -111,6 +114,21 @@ class PixieGame(val engine: PixieEngine) {
      */
     fun onDrag(action: (PointerInputChange, Offset) -> Unit) = apply {
         this.dragRawHandler = action
+    }
+
+    /**
+     * Registers drag movement delta scaled into engine virtual resolution units,
+     * encapsulating letterbox scaling and canvas resolution disparities.
+     */
+    fun onVirtualDragDelta(action: (dx: Float, dy: Float) -> Unit) = apply {
+        this.virtualDragDeltaHandler = action
+    }
+
+    /**
+     * Registers drag start position scaled into engine virtual resolution coordinates.
+     */
+    fun onVirtualDragStart(action: (virtualX: Float, virtualY: Float) -> Unit) = apply {
+        this.virtualDragStartHandler = action
     }
 
     /**
@@ -174,13 +192,37 @@ class PixieGame(val engine: PixieEngine) {
                     )
                 }
             }
-            if (dragDeltaHandler != null || dragRawHandler != null) {
-                finalModifier = finalModifier.pointerInput(dragDeltaHandler, dragRawHandler) {
-                    detectDragGestures { change, dragAmount ->
-                        change.consume()
-                        dragDeltaHandler?.invoke(dragAmount.x, dragAmount.y)
-                        dragRawHandler?.invoke(change, dragAmount)
-                    }
+            if (dragDeltaHandler != null || dragRawHandler != null ||
+                virtualDragDeltaHandler != null || virtualDragStartHandler != null
+            ) {
+                finalModifier = finalModifier.pointerInput(
+                    dragDeltaHandler, dragRawHandler, virtualDragDeltaHandler, virtualDragStartHandler
+                ) {
+                    detectDragGestures(
+                        onDragStart = { offset ->
+                            virtualDragStartHandler?.let { startHandler ->
+                                val scaleX = size.width / engine.virtualResolution.width.toFloat()
+                                val scaleY = size.height / engine.virtualResolution.height.toFloat()
+                                val scale = min(scaleX, scaleY).coerceAtLeast(0.001f)
+                                val offsetX = (size.width - engine.virtualResolution.width * scale) * 0.5f
+                                val offsetY = (size.height - engine.virtualResolution.height * scale) * 0.5f
+                                val virtualX = (offset.x - offsetX) / scale
+                                val virtualY = (offset.y - offsetY) / scale
+                                startHandler(virtualX, virtualY)
+                            }
+                        },
+                        onDrag = { change, dragAmount ->
+                            change.consume()
+                            dragDeltaHandler?.invoke(dragAmount.x, dragAmount.y)
+                            dragRawHandler?.invoke(change, dragAmount)
+                            virtualDragDeltaHandler?.let { handler ->
+                                val scaleX = size.width / engine.virtualResolution.width.toFloat()
+                                val scaleY = size.height / engine.virtualResolution.height.toFloat()
+                                val scale = min(scaleX, scaleY).coerceAtLeast(0.001f)
+                                handler(dragAmount.x / scale, dragAmount.y / scale)
+                            }
+                        }
+                    )
                 }
             }
             PixieGameCanvas(
