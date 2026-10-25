@@ -241,6 +241,44 @@ class PixieGame(val engine: PixieEngine) {
     }
 
     /**
+     * Resolves the active layout matching orientation and breakpoint thresholds.
+     */
+    fun resolveActiveLayout(
+        isLandscape: Boolean,
+        screenWidthDp: Dp,
+        screenHeightDp: Dp
+    ): PixieScreenLayout {
+        return if (!isLandscape) {
+            portraitBreakpoints
+                .sortedBy { it.maxWidth }
+                .firstOrNull { screenWidthDp <= it.maxWidth }
+                ?.layout
+                ?: portraitBreakpoints.lastOrNull()?.layout
+                ?: PixieScreenLayout()
+        } else {
+            landscapeBreakpoints
+                .sortedBy { it.maxHeight }
+                .firstOrNull { screenHeightDp <= it.maxHeight }
+                ?.layout
+                ?: landscapeBreakpoints.lastOrNull()?.layout
+                ?: PixieScreenLayout()
+        }
+    }
+
+    internal fun getPortraitBreakpoints(): List<PortraitBreakpoint> = portraitBreakpoints
+    internal fun getLandscapeBreakpoints(): List<LandscapeBreakpoint> = landscapeBreakpoints
+    internal fun getInputAdapter(): DualModeInputAdapter? = inputAdapter
+    internal fun getHapticPort(): HapticPort? = hapticPort
+    internal fun getRenderer(): AndroidCanvasRenderer? = renderer
+    internal fun getTapHandler(): ((Offset) -> Unit)? = tapHandler
+    internal fun getDragDeltaHandler(): ((Float, Float) -> Unit)? = dragDeltaHandler
+    internal fun getVirtualDragDeltaHandler(): ((Float, Float) -> Unit)? = virtualDragDeltaHandler
+    internal fun getVirtualDragStartHandler(): ((Float, Float) -> Unit)? = virtualDragStartHandler
+    internal fun getFrameTickHandler(): ((Float) -> Unit)? = frameTickHandler
+    internal fun getCanvasOverlays(): List<@Composable BoxScope.() -> Unit> = canvasOverlays
+    internal fun getOverlaysContent(): (@Composable () -> Unit)? = overlaysContent
+
+    /**
      * Resolves the active layout based on current orientation and screen dimensions,
      * coordinating safe insets, hardware key interceptors, and non-overlapping slots.
      */
@@ -256,21 +294,7 @@ class PixieGame(val engine: PixieEngine) {
 
         // Resolve active layout matching orientation and breakpoint thresholds
         val activeLayout = remember(isLandscape, screenWidthDp, screenHeightDp) {
-            if (!isLandscape) {
-                portraitBreakpoints
-                    .sortedBy { it.maxWidth }
-                    .firstOrNull { screenWidthDp <= it.maxWidth }
-                    ?.layout
-                    ?: portraitBreakpoints.lastOrNull()?.layout
-                    ?: PixieScreenLayout()
-            } else {
-                landscapeBreakpoints
-                    .sortedBy { it.maxHeight }
-                    .firstOrNull { screenHeightDp <= it.maxHeight }
-                    ?.layout
-                    ?: landscapeBreakpoints.lastOrNull()?.layout
-                    ?: PixieScreenLayout()
-            }
+            resolveActiveLayout(isLandscape, screenWidthDp, screenHeightDp)
         }
 
         val focusRequester = remember { FocusRequester() }

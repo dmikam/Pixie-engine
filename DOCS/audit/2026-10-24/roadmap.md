@@ -97,12 +97,12 @@ To advance the roadmap step-by-step in subsequent chat sessions, use the standar
 
 ## Priority 4: Quality & Polish Items
 
-- [ ] **Task 4.1: Add Automated Robolectric Tests for Raptor Game Flow**
+- [x] **Task 4.1: Add Automated Robolectric Tests for Raptor Game Flow**
   - **Target File(s)**: `app/src/test/java/com/example/raptor/RaptorGameCoordinatorTest.kt`
   - **Action**: Implement unit and coordinator tests verifying level progression, boss spawning, difficulty multipliers, and score/credits accumulation.
   - **Rationale**: Protects against regressions during coordinator refactoring.
 
-- [ ] **Task 4.2: Add Automated Tests for `PixieGame` Fluent Builder Breakpoints**
+- [x] **Task 4.2: Add Automated Tests for `PixieGame` Fluent Builder Breakpoints**
   - **Target File(s)**: `pixie-android/src/test/kotlin/com/pixie/android/ui/PixieGameTest.kt`
   - **Action**: Test responsive breakpoint matching and slot resolution in portrait and landscape.
   - **Rationale**: Ensures robustness of engine UI DSL across varied screen form factors.

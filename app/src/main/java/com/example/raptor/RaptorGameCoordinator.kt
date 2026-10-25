@@ -60,7 +60,7 @@ class RaptorGameCoordinator(
 
     // Player craft & Boss
     lateinit var playerShip: RaptorShip
-    private var boss: RaptorBoss? = null
+    var boss: RaptorBoss? = null
     var isBossSpawned: Boolean = false
 
     // Active object tracking lists
@@ -91,8 +91,8 @@ class RaptorGameCoordinator(
     )
 
     // Timeline progress tracking
-    private var levelDistanceTraveled: Float = 0f
-    private var isLevelCompleted: Boolean = false
+    var levelDistanceTraveled: Float = 0f
+    var isLevelCompleted: Boolean = false
 
     var onGameOver: (() -> Unit)? = null
     var onVictory: (() -> Unit)? = null
@@ -326,6 +326,8 @@ class RaptorGameCoordinator(
             projectilePool = engine.projectilePool,
             audio = audio,
             onBossDefeated = {
+                engine.context.score += 10000L
+                engine.context.earnCredits(3500L)
                 isLevelCompleted = true
                 engine.context.isVictory = true
                 onVictory?.invoke()
