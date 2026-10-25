@@ -86,39 +86,38 @@ fun ArkanoidGameScreen(
         }
         // ---------- PORTRAIT LAYOUT ----------
         .portrait(maxWidth = 600.dp) {
-            topStatusBar {
-                ArkanoidPortraitStatusBar(
-                    state = state,
-                    onExitToMenu = onExitToMenu,
-                    onPause = { coordinator.togglePause() }
-                )
-            }
-            bottomButtons(
-                steerLeftBtn,
-                actionBtn,
-                steerRightBtn,
-                pauseBtn
+            arcadeCabinet(
+                topBar = {
+                    ArkanoidPortraitStatusBar(
+                        state = state,
+                        onExitToMenu = onExitToMenu,
+                        onPause = { coordinator.togglePause() }
+                    )
+                },
+                buttons = listOf(steerLeftBtn, actionBtn, steerRightBtn, pauseBtn),
+                floatingButtons = floatingBtns
             )
-            floatingButtons(floatingBtns)
         }
         // ---------- LANDSCAPE LAYOUT ----------
         .landscape(maxHeight = 600.dp) {
-            leftWing {
-                ArkanoidLandscapeLeftWing(
-                    state = state,
-                    onExitToMenu = onExitToMenu,
-                    leftBtn = steerLeftBtn,
-                    rightBtn = steerRightBtn
-                )
-            }
-            rightWing {
-                ArkanoidLandscapeRightWing(
-                    state = state,
-                    onPause = { coordinator.togglePause() },
-                    actionBtn = actionBtn
-                )
-            }
-            floatingButtons(floatingBtns)
+            splitWings(
+                leftWing = {
+                    ArkanoidLandscapeLeftWing(
+                        state = state,
+                        onExitToMenu = onExitToMenu,
+                        leftBtn = steerLeftBtn,
+                        rightBtn = steerRightBtn
+                    )
+                },
+                rightWing = {
+                    ArkanoidLandscapeRightWing(
+                        state = state,
+                        onPause = { coordinator.togglePause() },
+                        actionBtn = actionBtn
+                    )
+                },
+                floatingButtons = floatingBtns
+            )
         }
         // ---------- MODAL OVERLAYS ----------
         .overlays {

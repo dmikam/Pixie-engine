@@ -88,7 +88,7 @@ To advance the roadmap step-by-step in subsequent chat sessions, use the standar
   - **Action**: Replace manual `detectDragGestures` with letterbox scaling math in `RaptorGameScreen` by registering drag listeners through the `PixieGame` DSL or coordinator adapter.
   - **Rationale**: Adheres to Rule 1: canvas gesture detection and letterboxed resolution scaling belong encapsulated inside engine DSLs rather than copied across game screens.
 
-- [ ] **Task 3.3: Fluent Screen Layout Presets for Arcade Form Factors**
+- [x] **Task 3.3: Fluent Screen Layout Presets for Arcade Form Factors**
   - **Target File(s)**: `pixie-android/src/main/kotlin/com/pixie/android/ui/PixieScreenLayout.kt`
   - **Action**: Add fluent convenience builder methods (e.g., `.arcadeCabinet()`, `.splitWings()`, `.fullCanvas()`) to streamline layout definitions across all games.
   - **Rationale**: Improves developer ergonomics and code reusability across future game prototypes.

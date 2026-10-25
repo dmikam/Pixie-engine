@@ -164,6 +164,40 @@ fun RaptorGameScreen(
         }
     }
 
+    val topHudContent: @Composable () -> Unit = {
+        RaptorTopHud(
+            score = currentScore,
+            levelName = coordinator.currentLevel.name,
+            difficulty = selectedDifficulty,
+            distance = levelDistance,
+            targetDistance = coordinator.currentLevel.targetDistance,
+            onPauseClick = {
+                audioAdapter.playSound(AudioEvent.BUTTON_CLICK)
+                isPaused = true
+            },
+            onBackClick = {
+                audioAdapter.playSound(AudioEvent.BUTTON_CLICK)
+                onExitToMenu()
+            }
+        )
+    }
+
+    val bottomControlsContent: @Composable () -> Unit = {
+        RaptorBottomControls(
+            isAutoFire = coordinator.isAutoFireEnabled,
+            weaponTier = weaponTier,
+            missilesLeft = missilesLeft,
+            bombsLeft = bombsLeft,
+            activePerks = activePerksList,
+            onToggleAutoFire = {
+                coordinator.isAutoFireEnabled = !coordinator.isAutoFireEnabled
+                audioAdapter.playSound(AudioEvent.BUTTON_CLICK)
+            },
+            onFireMissiles = { coordinator.fireSecondaryMissiles() },
+            onTriggerBomb = { coordinator.triggerMegaBomb() }
+        )
+    }
+
     PixieGame(coordinator.engine)
         .haptic(hapticAdapter)
         .onVirtualDragStart { virtualX, virtualY ->
@@ -188,72 +222,16 @@ fun RaptorGameScreen(
             }
         }
         .portrait {
-            topOverlayStatusBar {
-                RaptorTopHud(
-                    score = currentScore,
-                    levelName = coordinator.currentLevel.name,
-                    difficulty = selectedDifficulty,
-                    distance = levelDistance,
-                    targetDistance = coordinator.currentLevel.targetDistance,
-                    onPauseClick = {
-                        audioAdapter.playSound(AudioEvent.BUTTON_CLICK)
-                        isPaused = true
-                    },
-                    onBackClick = {
-                        audioAdapter.playSound(AudioEvent.BUTTON_CLICK)
-                        onExitToMenu()
-                    }
-                )
-            }
-            bottomOverlayDeck {
-                RaptorBottomControls(
-                    isAutoFire = coordinator.isAutoFireEnabled,
-                    weaponTier = weaponTier,
-                    missilesLeft = missilesLeft,
-                    bombsLeft = bombsLeft,
-                    activePerks = activePerksList,
-                    onToggleAutoFire = {
-                        coordinator.isAutoFireEnabled = !coordinator.isAutoFireEnabled
-                        audioAdapter.playSound(AudioEvent.BUTTON_CLICK)
-                    },
-                    onFireMissiles = { coordinator.fireSecondaryMissiles() },
-                    onTriggerBomb = { coordinator.triggerMegaBomb() }
-                )
-            }
+            fullCanvas(
+                topOverlay = topHudContent,
+                bottomOverlay = bottomControlsContent
+            )
         }
         .landscape {
-            topOverlayStatusBar {
-                RaptorTopHud(
-                    score = currentScore,
-                    levelName = coordinator.currentLevel.name,
-                    difficulty = selectedDifficulty,
-                    distance = levelDistance,
-                    targetDistance = coordinator.currentLevel.targetDistance,
-                    onPauseClick = {
-                        audioAdapter.playSound(AudioEvent.BUTTON_CLICK)
-                        isPaused = true
-                    },
-                    onBackClick = {
-                        audioAdapter.playSound(AudioEvent.BUTTON_CLICK)
-                        onExitToMenu()
-                    }
-                )
-            }
-            bottomOverlayDeck {
-                RaptorBottomControls(
-                    isAutoFire = coordinator.isAutoFireEnabled,
-                    weaponTier = weaponTier,
-                    missilesLeft = missilesLeft,
-                    bombsLeft = bombsLeft,
-                    activePerks = activePerksList,
-                    onToggleAutoFire = {
-                        coordinator.isAutoFireEnabled = !coordinator.isAutoFireEnabled
-                        audioAdapter.playSound(AudioEvent.BUTTON_CLICK)
-                    },
-                    onFireMissiles = { coordinator.fireSecondaryMissiles() },
-                    onTriggerBomb = { coordinator.triggerMegaBomb() }
-                )
-            }
+            fullCanvas(
+                topOverlay = topHudContent,
+                bottomOverlay = bottomControlsContent
+            )
         }
         .canvasOverlay {
             RaptorIntegrityGauges(

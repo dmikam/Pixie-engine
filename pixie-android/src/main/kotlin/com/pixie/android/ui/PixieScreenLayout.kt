@@ -126,4 +126,184 @@ class PixieScreenLayout {
     fun floatingButtons(buttons: List<ArcadeButtonConfig>) = apply {
         this.floatingButtons = buttons
     }
+
+    // =========================================================================
+    // FLUENT PRESETS FOR ARCADE FORM FACTORS
+    // =========================================================================
+
+    /**
+     * Preset: Arcade Cabinet.
+     * Configures a docked top status bar and a custom docked bottom control deck.
+     * Guaranteed never to overlap the letterboxed game viewport.
+     */
+    fun arcadeCabinet(
+        topBar: @Composable () -> Unit,
+        bottomDeck: @Composable () -> Unit,
+        floatingButtons: List<ArcadeButtonConfig> = emptyList()
+    ) = apply {
+        this.topStatusBar = topBar
+        this.bottomDeck = bottomDeck
+        if (floatingButtons.isNotEmpty()) {
+            this.floatingButtons = floatingButtons
+        }
+    }
+
+    /**
+     * Preset: Arcade Cabinet with flex console buttons.
+     * Automatically distributes buttons horizontally with proportional sizing.
+     */
+    fun arcadeCabinet(
+        topBar: @Composable () -> Unit,
+        vararg buttons: ArcadeButtonConfig
+    ) = arcadeCabinet(topBar, buttons.toList())
+
+    fun arcadeCabinet(
+        topBar: @Composable () -> Unit,
+        buttons: List<ArcadeButtonConfig>,
+        floatingButtons: List<ArcadeButtonConfig> = emptyList()
+    ) = apply {
+        this.topStatusBar = topBar
+        bottomButtons(buttons)
+        if (floatingButtons.isNotEmpty()) {
+            this.floatingButtons = floatingButtons
+        }
+    }
+
+    /**
+     * Preset: Split Wings.
+     * Flanks the game canvas with left and right lateral pillars in wide/landscape screens,
+     * ensuring zero vertical screen space is lost to HUD or buttons.
+     */
+    fun splitWings(
+        leftWing: @Composable () -> Unit,
+        rightWing: @Composable () -> Unit,
+        floatingButtons: List<ArcadeButtonConfig> = emptyList()
+    ) = apply {
+        this.leftWing = leftWing
+        this.rightWing = rightWing
+        if (floatingButtons.isNotEmpty()) {
+            this.floatingButtons = floatingButtons
+        }
+    }
+
+    /**
+     * Preset: Split Wings with standard arcade pillars.
+     * Configures left steer pillar and right action pillar flanking the center viewport.
+     */
+    fun splitWings(
+        leftButtons: List<ArcadeButtonConfig>,
+        rightButtons: List<ArcadeButtonConfig>,
+        leftHeader: @Composable (() -> Unit)? = null,
+        rightHeader: @Composable (() -> Unit)? = null,
+        floatingButtons: List<ArcadeButtonConfig> = emptyList()
+    ) = apply {
+        wings(leftButtons, rightButtons, leftHeader, rightHeader)
+        if (floatingButtons.isNotEmpty()) {
+            this.floatingButtons = floatingButtons
+        }
+    }
+
+    /**
+     * Preset: Full Canvas.
+     * Maximizes gameplay viewport (ideal for runners like DinoRun, vertical shmups like Raptor,
+     * or scrollers) with optional non-blocking HUD overlays and bottom controls.
+     */
+    fun fullCanvas(
+        topOverlay: (@Composable () -> Unit)? = null,
+        bottomOverlay: (@Composable () -> Unit)? = null,
+        floatingButtons: List<ArcadeButtonConfig> = emptyList()
+    ) = apply {
+        this.topOverlayStatusBar = topOverlay
+        this.bottomOverlayDeck = bottomOverlay
+        if (floatingButtons.isNotEmpty()) {
+            this.floatingButtons = floatingButtons
+        }
+    }
+
+    /**
+     * Preset: Full Canvas with top overlay HUD and flex console buttons.
+     */
+    fun fullCanvas(
+        topOverlay: (@Composable () -> Unit)? = null,
+        vararg buttons: ArcadeButtonConfig
+    ) = fullCanvas(topOverlay, buttons.toList())
+
+    fun fullCanvas(
+        topOverlay: (@Composable () -> Unit)? = null,
+        buttons: List<ArcadeButtonConfig>,
+        floatingButtons: List<ArcadeButtonConfig> = emptyList()
+    ) = apply {
+        this.topOverlayStatusBar = topOverlay
+        this.bottomOverlayDeck = {
+            DockedBottomConsoleDeck(buttons = buttons)
+        }
+        if (floatingButtons.isNotEmpty()) {
+            this.floatingButtons = floatingButtons
+        }
+    }
+
+    companion object {
+        /**
+         * Creates an Arcade Cabinet layout preset with docked top status bar and bottom buttons.
+         */
+        fun arcadeCabinet(
+            topBar: @Composable () -> Unit,
+            vararg buttons: ArcadeButtonConfig
+        ): PixieScreenLayout = PixieScreenLayout().arcadeCabinet(topBar, *buttons)
+
+        fun arcadeCabinet(
+            topBar: @Composable () -> Unit,
+            bottomDeck: @Composable () -> Unit,
+            floatingButtons: List<ArcadeButtonConfig> = emptyList()
+        ): PixieScreenLayout = PixieScreenLayout().arcadeCabinet(topBar, bottomDeck, floatingButtons)
+
+        fun arcadeCabinet(
+            topBar: @Composable () -> Unit,
+            buttons: List<ArcadeButtonConfig>,
+            floatingButtons: List<ArcadeButtonConfig> = emptyList()
+        ): PixieScreenLayout = PixieScreenLayout().arcadeCabinet(topBar, buttons, floatingButtons)
+
+        /**
+         * Creates a Split Wings layout preset flanking the viewport.
+         */
+        fun splitWings(
+            leftWing: @Composable () -> Unit,
+            rightWing: @Composable () -> Unit,
+            floatingButtons: List<ArcadeButtonConfig> = emptyList()
+        ): PixieScreenLayout = PixieScreenLayout().splitWings(leftWing, rightWing, floatingButtons)
+
+        fun splitWings(
+            leftButtons: List<ArcadeButtonConfig>,
+            rightButtons: List<ArcadeButtonConfig>,
+            leftHeader: @Composable (() -> Unit)? = null,
+            rightHeader: @Composable (() -> Unit)? = null,
+            floatingButtons: List<ArcadeButtonConfig> = emptyList()
+        ): PixieScreenLayout = PixieScreenLayout().splitWings(
+            leftButtons,
+            rightButtons,
+            leftHeader,
+            rightHeader,
+            floatingButtons
+        )
+
+        /**
+         * Creates a Full Canvas layout preset with optional overlay HUD and controls.
+         */
+        fun fullCanvas(
+            topOverlay: (@Composable () -> Unit)? = null,
+            bottomOverlay: (@Composable () -> Unit)? = null,
+            floatingButtons: List<ArcadeButtonConfig> = emptyList()
+        ): PixieScreenLayout = PixieScreenLayout().fullCanvas(topOverlay, bottomOverlay, floatingButtons)
+
+        fun fullCanvas(
+            topOverlay: (@Composable () -> Unit)? = null,
+            vararg buttons: ArcadeButtonConfig
+        ): PixieScreenLayout = PixieScreenLayout().fullCanvas(topOverlay, *buttons)
+
+        fun fullCanvas(
+            topOverlay: (@Composable () -> Unit)? = null,
+            buttons: List<ArcadeButtonConfig>,
+            floatingButtons: List<ArcadeButtonConfig> = emptyList()
+        ): PixieScreenLayout = PixieScreenLayout().fullCanvas(topOverlay, buttons, floatingButtons)
+    }
 }

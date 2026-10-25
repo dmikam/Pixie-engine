@@ -157,13 +157,17 @@ fun DinoGameScreen(
         }
         // ---------- PORTRAIT LAYOUT ----------
         .portrait(maxWidth = 600.dp) {
-            topOverlayStatusBar { topHudContent() }
-            bottomOverlayDeck { controlDeckContent() }
+            fullCanvas(
+                topOverlay = topHudContent,
+                bottomOverlay = controlDeckContent
+            )
         }
         // ---------- LANDSCAPE LAYOUT ----------
         .landscape(maxHeight = 600.dp) {
-            topOverlayStatusBar { topHudContent() }
-            bottomOverlayDeck { controlDeckContent() }
+            fullCanvas(
+                topOverlay = topHudContent,
+                bottomOverlay = controlDeckContent
+            )
         }
         // ---------- MODAL OVERLAYS ----------
         .overlays {
