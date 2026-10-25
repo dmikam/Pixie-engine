@@ -1,38 +1,37 @@
 package com.example.raptor
 
-import com.example.raptor.entities.DestructibleType
 import com.example.raptor.entities.EnemyShip
-import com.example.raptor.entities.EnemyType
 import com.example.raptor.entities.GroundDestructible
 import com.example.raptor.entities.PickupType
 import com.example.raptor.entities.RaptorBoss
 import com.example.raptor.entities.RaptorPickup
 import com.example.raptor.entities.RaptorShip
+import com.example.raptor.world.RaptorCloudLayer
+import com.example.raptor.world.RaptorCollisionSystem
 import com.example.raptor.world.RaptorLevel
 import com.example.raptor.world.RaptorLevelCatalog
+import com.example.raptor.world.RaptorProjectilesLayer
+import com.example.raptor.world.RaptorTerrainLayer
+import com.example.raptor.world.RaptorWaveSpawner
 import com.pixie.engine.core.PixieEngine
 import com.pixie.engine.core.camera.GameViewMode
 import com.pixie.engine.core.context.DifficultyPreset
-import com.pixie.engine.core.context.GameContext
 import com.pixie.engine.core.entity.PixieObject
 import com.pixie.engine.core.math.Vec2
 import com.pixie.engine.core.ports.AudioEvent
 import com.pixie.engine.core.ports.AudioPort
 import com.pixie.engine.core.ports.HapticPort
 import com.pixie.engine.core.ports.VirtualResolution
+import com.pixie.engine.core.screen.StandardGameplayScreen
+import com.pixie.engine.core.screen.StandardScreenIds
 import com.pixie.engine.core.weapon.Projectile
 import kotlin.random.Random
 
 /**
  * Game coordinator for Raptor: Vertical Arcade Combat Scroller.
  *
- * Drives the PixieEngine in vertical scrolling mode, managing:
- * - High-speed projectile simulation and pooling
- * - Procedural enemy squadrons & formation flight paths
- * - Destructible ground installations, turrets, naval ships, and chain explosions
- * - Collectible power-ups and active perk badges
- * - Multi-stage boss encounters and campaign level progression
- * - Continuous difficulty scaling (0..100) and context property computations
+ * Coordinates vertical scrolling gameplay, delegating procedural wave/ground spawning
+ * to [RaptorWaveSpawner] and combat hit/ramming/AOE resolution to [RaptorCollisionSystem].
  */
 class RaptorGameCoordinator(
     val audio: AudioPort? = null,
@@ -52,14 +51,14 @@ class RaptorGameCoordinator(
     var isAutoFireEnabled: Boolean = true
 
     // Dedicated Vertical Scrolling Layers for Raptor
-    val terrainLayer = com.example.raptor.world.RaptorTerrainLayer(currentLevelGetter = { currentLevel })
-    val projectilesLayer = com.example.raptor.world.RaptorProjectilesLayer(
+    val terrainLayer = RaptorTerrainLayer(currentLevelGetter = { currentLevel })
+    val projectilesLayer = RaptorProjectilesLayer(
         playerProjectilesGetter = { playerProjectiles },
         enemyProjectilesGetter = { enemyProjectiles }
     )
-    val cloudLayer = com.example.raptor.world.RaptorCloudLayer()
+    val cloudLayer = RaptorCloudLayer()
 
-    // Player craft
+    // Player craft & Boss
     lateinit var playerShip: RaptorShip
     private var boss: RaptorBoss? = null
     var isBossSpawned: Boolean = false
@@ -71,9 +70,27 @@ class RaptorGameCoordinator(
     val playerProjectiles = mutableListOf<Projectile>()
     val enemyProjectiles = mutableListOf<Projectile>()
 
-    // Wave spawning timeline
-    private var waveSpawnTimer: Float = 0f
-    private var groundSpawnTimer: Float = 0f
+    // Modular collision system
+    val collisionSystem = RaptorCollisionSystem(
+        context = engine.context,
+        particleLayer = engine.particleLayer
+    )
+
+    // Modular wave & ground spawner
+    val waveSpawner = RaptorWaveSpawner(
+        virtualResolution = virtualResolution,
+        projectilePool = engine.projectilePool,
+        itemsLayer = engine.itemsLayer,
+        enemies = enemies,
+        groundTargets = groundTargets,
+        audio = audio,
+        onSpawnDrop = { dropPos -> spawnDrop(dropPos) },
+        onChainExplosion = { center, radius, dmg ->
+            collisionSystem.triggerAoeDamage(center, radius, dmg, enemies, groundTargets)
+        }
+    )
+
+    // Timeline progress tracking
     private var levelDistanceTraveled: Float = 0f
     private var isLevelCompleted: Boolean = false
 
@@ -87,8 +104,8 @@ class RaptorGameCoordinator(
         engine.layerStack.addLayer(cloudLayer)
 
         // Register standard screen support in engine core
-        engine.registerScreen(com.pixie.engine.core.screen.StandardGameplayScreen(engine))
-        engine.setScreen(com.pixie.engine.core.screen.StandardScreenIds.GAMEPLAY)
+        engine.registerScreen(StandardGameplayScreen(engine))
+        engine.setScreen(StandardScreenIds.GAMEPLAY)
 
         setupGame()
     }
@@ -113,8 +130,8 @@ class RaptorGameCoordinator(
         isBossSpawned = false
         levelDistanceTraveled = 0f
         isLevelCompleted = false
-        waveSpawnTimer = 1.2f
-        groundSpawnTimer = 0.4f
+
+        waveSpawner.reset(waveDelay = 1.2f, groundDelay = 0.4f)
 
         // Initialize player ship at lower third of screen (Y = 250)
         playerShip = RaptorShip(
@@ -156,31 +173,50 @@ class RaptorGameCoordinator(
 
     /**
      * Frame update hook driven by PixieGameCanvas vsync loop.
-     * Note: Engine layers and objects are updated by PixieGameCanvas via engine.tick(dt).
      */
     fun update(dt: Float) {
         if (engine.context.isGameOver || isLevelCompleted) return
 
-        // Scrolling distance accumulation (authentic arcade pace ~36 virtual px/s)
+        updateFlightProgress(dt)
+        updateSpawning(dt)
+        updatePlayer(dt)
+        updateEnemies()
+        updateGroundTargets()
+        updateBoss()
+        updatePickups(dt)
+        updateProjectiles(dt)
+
+        collisionSystem.resolveCombatCollisions(
+            playerShip = playerShip,
+            boss = boss,
+            enemies = enemies,
+            groundTargets = groundTargets,
+            playerProjectiles = playerProjectiles,
+            enemyProjectiles = enemyProjectiles
+        )
+
+        checkGameOver()
+    }
+
+    private fun updateFlightProgress(dt: Float) {
         levelDistanceTraveled += dt * 36f
         engine.context.distance = levelDistanceTraveled
         engine.context.currentMovingSpeed = playerShip.velocity.length()
+    }
 
-        // 1. Spawning timeline (aerial waves & ground targets until boss)
+    private fun updateSpawning(dt: Float) {
         val bossTriggerDistance = currentLevel.targetDistance
         if (!isBossSpawned && levelDistanceTraveled >= bossTriggerDistance) {
             spawnBoss()
         } else if (!isBossSpawned) {
-            updateWaveSpawning(dt)
-            updateGroundSpawning(dt)
+            waveSpawner.update(dt, selectedDifficulty, currentLevelIndex)
         }
+    }
 
-        // 2. Player auto-fire
+    private fun updatePlayer(dt: Float) {
         if (isAutoFireEnabled && playerShip.isAlive) {
             playerShip.firePrimary(engine.context, playerProjectiles)
         }
-
-        // 3. Update player ship movement clamp
         playerShip.moveTo(
             target = playerShip.targetPosition,
             dt = dt,
@@ -189,33 +225,33 @@ class RaptorGameCoordinator(
             boundsYMin = 20f,
             boundsYMax = virtualResolution.height.toFloat() - 10f
         )
+    }
 
-        // 4. Update enemies: check shooting and offscreen despawn
+    private fun updateEnemies() {
         val enemyIter = enemies.iterator()
         while (enemyIter.hasNext()) {
             val enemy = enemyIter.next()
             enemy.tryShoot(playerShip, engine.context, enemyProjectiles)
-
-            // Despawn off bottom screen or if killed
             if (enemy.position.y > virtualResolution.height + 30f || !enemy.isAlive) {
                 engine.itemsLayer.removeObject(enemy.id)
                 enemyIter.remove()
             }
         }
+    }
 
-        // 5. Update ground destructibles & ground turret fire
+    private fun updateGroundTargets() {
         val groundIter = groundTargets.iterator()
         while (groundIter.hasNext()) {
             val target = groundIter.next()
             target.tryShoot(playerShip, engine.context, enemyProjectiles)
-
             if (target.position.y > virtualResolution.height + 40f) {
                 engine.itemsLayer.removeObject(target.id)
                 groundIter.remove()
             }
         }
+    }
 
-        // 6. Update boss
+    private fun updateBoss() {
         boss?.let { b ->
             b.attack(engine.context, enemyProjectiles)
             if (b.isDefeated) {
@@ -226,15 +262,14 @@ class RaptorGameCoordinator(
                 onVictory?.invoke()
             }
         }
+    }
 
-        // 7. Update pickups (magnet attraction to player ship)
+    private fun updatePickups(dt: Float) {
         val hasMagnet = engine.context.hasPerk("MAGNET_BEAM")
         val pickupIter = pickups.iterator()
         while (pickupIter.hasNext()) {
             val p = pickupIter.next()
             p.attractTowards(playerShip.position, dt, hasMagnet)
-
-            // Check collection by player
             if (playerShip.boundingBox.intersects(p.boundingBox)) {
                 p.applyEffect(playerShip, engine.context, audio)
                 p.isAlive = false
@@ -245,238 +280,41 @@ class RaptorGameCoordinator(
                 pickupIter.remove()
             }
         }
-
-        // 8. Update active projectiles
-        updateProjectiles(dt)
-
-        // 9. Collision detection: Player projectiles vs Enemies, Boss, and Ground targets
-        resolveCombatCollisions()
-
-        // Check game over
-        if (!playerShip.isAlive && !engine.context.isGameOver) {
-            engine.context.isGameOver = true
-            onGameOver?.invoke()
-        }
     }
 
     private fun updateProjectiles(dt: Float) {
-        // Player projectiles
-        val pIter = playerProjectiles.iterator()
-        while (pIter.hasNext()) {
-            val proj = pIter.next()
+        updateProjectileList(playerProjectiles, dt, -15f, virtualResolution.height + 15f, isPlayer = true)
+        updateProjectileList(enemyProjectiles, dt, -15f, virtualResolution.height + 15f, isPlayer = false)
+    }
+
+    private fun updateProjectileList(
+        projectiles: MutableList<Projectile>,
+        dt: Float,
+        yMin: Float,
+        yMax: Float,
+        isPlayer: Boolean
+    ) {
+        val iter = projectiles.iterator()
+        while (iter.hasNext()) {
+            val proj = iter.next()
             proj.update(dt, engine.context)
-            if (!proj.isAlive || proj.position.y < -15f || proj.position.x < -15f || proj.position.x > virtualResolution.width + 15f) {
+            val isOutOfBounds = if (isPlayer) {
+                proj.position.y < yMin || proj.position.x < -15f || proj.position.x > virtualResolution.width + 15f
+            } else {
+                proj.position.y > yMax || proj.position.x < -15f || proj.position.x > virtualResolution.width + 15f
+            }
+            if (!proj.isAlive || isOutOfBounds) {
                 proj.isAlive = false
                 engine.projectilePool.recycle(proj)
-                pIter.remove()
-            }
-        }
-
-        // Enemy projectiles
-        val eIter = enemyProjectiles.iterator()
-        while (eIter.hasNext()) {
-            val proj = eIter.next()
-            proj.update(dt, engine.context)
-            if (!proj.isAlive || proj.position.y > virtualResolution.height + 15f || proj.position.x < -15f || proj.position.x > virtualResolution.width + 15f) {
-                proj.isAlive = false
-                engine.projectilePool.recycle(proj)
-                eIter.remove()
+                iter.remove()
             }
         }
     }
 
-    private fun resolveCombatCollisions() {
-        // Player bullets vs Enemies, Boss, and Ground installations
-        for (bullet in playerProjectiles) {
-            if (!bullet.isAlive) continue
-
-            // Against Boss
-            val b = boss
-            if (b != null && b.isAlive && bullet.boundingBox.intersects(b.boundingBox)) {
-                b.takeDamage(bullet.hitPower, bullet.position, engine.particleLayer)
-                bullet.onImpact(bullet.position, engine.particleLayer)
-                continue
-            }
-
-            // Against Aerial Enemies
-            for (enemy in enemies) {
-                if (enemy.isAlive && bullet.boundingBox.intersects(enemy.boundingBox)) {
-                    val killed = enemy.takeDamage(bullet.hitPower, engine.particleLayer)
-                    if (killed) {
-                        engine.context.score += enemy.scoreAward
-                        engine.context.earnCredits(enemy.scoreAward / 2)
-                    }
-                    bullet.onImpact(bullet.position, engine.particleLayer)
-                    if (!bullet.isAlive) break
-                }
-            }
-
-            // Against Ground Destructibles (Buildings, Silos, Naval Gunboats, Turrets)
-            if (bullet.isAlive) {
-                for (target in groundTargets) {
-                    if (!target.isDestroyed && bullet.boundingBox.intersects(target.boundingBox)) {
-                        val destroyed = target.takeDamage(bullet.hitPower, engine.particleLayer)
-                        if (destroyed) {
-                            engine.context.score += target.type.scoreValue
-                            engine.context.earnCredits(target.type.scoreValue / 2)
-                        }
-                        bullet.onImpact(bullet.position, engine.particleLayer)
-                        if (!bullet.isAlive) break
-                    }
-                }
-            }
-        }
-
-        // Enemy bullets vs Player ship
-        if (playerShip.isAlive) {
-            val playerBox = playerShip.boundingBox
-            for (bullet in enemyProjectiles) {
-                if (bullet.isAlive && playerBox.intersects(bullet.boundingBox)) {
-                    playerShip.takeDamage(bullet.hitPower, engine.particleLayer)
-                    bullet.onImpact(bullet.position, engine.particleLayer)
-                }
-            }
-        }
-
-        // Mid-air collision (ramming): Player ship vs Enemies
-        // Collisions are non-fatal unless health is depleted; both take a heavy hit instead of instant death
-        if (playerShip.isAlive && !playerShip.isInvulnerable) {
-            val playerBox = playerShip.boundingBox
-            for (enemy in enemies) {
-                if (enemy.isAlive && !enemy.isWreck && playerBox.intersects(enemy.boundingBox)) {
-                    val playerHitAmount = when (enemy.type) {
-                        EnemyType.SCOUT -> 25f
-                        EnemyType.INTERCEPTOR -> 35f
-                        EnemyType.GUNSHIP -> 45f
-                        EnemyType.STEALTH_BOMBER -> 55f
-                    }
-                    playerShip.takeDamage(playerHitAmount, engine.particleLayer)
-                    playerShip.grantInvulnerability(1.0f)
-
-                    val killed = enemy.takeDamage(50f, engine.particleLayer)
-                    if (killed) {
-                        engine.context.score += enemy.scoreAward
-                        engine.context.earnCredits(enemy.scoreAward / 2)
-                    }
-                    engine.particleLayer.spawnSparks(playerShip.position + (playerShip.size * 0.5f), count = 12, color = 0xFFFF5722.toInt())
-                    break
-                }
-            }
-
-            // Player ship vs Boss ramming collision
-            val b = boss
-            if (b != null && b.isAlive && !b.isDefeated && playerBox.intersects(b.boundingBox)) {
-                playerShip.takeDamage(40f, engine.particleLayer)
-                playerShip.grantInvulnerability(1.2f)
-                b.takeDamage(35f, playerShip.position, engine.particleLayer)
-                engine.particleLayer.spawnSparks(playerShip.position, count = 14, color = 0xFFFF5722.toInt())
-            }
-        }
-    }
-
-    private fun updateWaveSpawning(dt: Float) {
-        waveSpawnTimer -= dt
-        if (waveSpawnTimer <= 0f) {
-            // Difficulty determines wave frequency
-            val spawnDelay = when (selectedDifficulty) {
-                DifficultyPreset.EASY -> 4.0f
-                DifficultyPreset.MEDIUM -> 3.2f
-                DifficultyPreset.DIFFICULT -> 2.5f
-                DifficultyPreset.HEAVY_METAL -> 1.8f
-                else -> 3.2f
-            }
-            waveSpawnTimer = spawnDelay
-
-            // Pick enemy type
-            val spawnType = when (Random.nextInt(10)) {
-                in 0..4 -> EnemyType.SCOUT
-                in 5..7 -> EnemyType.INTERCEPTOR
-                in 8..8 -> EnemyType.GUNSHIP
-                else -> EnemyType.STEALTH_BOMBER
-            }
-
-            val squadronSize = when (spawnType) {
-                EnemyType.SCOUT -> 3
-                EnemyType.INTERCEPTOR -> 2
-                else -> 1
-            }
-
-            val startX = Random.nextFloat() * (virtualResolution.width - 70f) + 35f
-            for (i in 0 until squadronSize) {
-                val posX = startX + (i - (squadronSize - 1) / 2f) * 24f
-                val posY = -25f - (i * 22f)
-                val enemy = EnemyShip.create(
-                    type = spawnType,
-                    id = "enemy_${System.currentTimeMillis()}_$i",
-                    initialPos = Vec2(posX, posY),
-                    projectilePool = engine.projectilePool,
-                    audio = audio,
-                    onDeathDrop = { dropPos -> spawnDrop(dropPos) }
-                )
-                enemies.add(enemy)
-                engine.itemsLayer.addObject(enemy)
-            }
-        }
-    }
-
-    private fun updateGroundSpawning(dt: Float) {
-        groundSpawnTimer -= dt
-        if (groundSpawnTimer <= 0f) {
-            // Frequent ground building spawns (every 1.5 - 2.5 seconds)
-            groundSpawnTimer = Random.nextFloat() * 1.0f + 1.5f
-
-            // Select ground structure appropriate for level
-            val groundType = when (currentLevelIndex) {
-                1 -> {
-                    // Archipelago / Ocean: Gunboats, coastal batteries, fuel depots, radar
-                    when (Random.nextInt(7)) {
-                        0 -> DestructibleType.NAVAL_GUNBOAT
-                        1 -> DestructibleType.GUN_TURRET
-                        2 -> DestructibleType.FUEL_SILO
-                        3 -> DestructibleType.RADAR_TOWER
-                        4 -> DestructibleType.SUPPLY_BUNKER
-                        5 -> DestructibleType.OIL_STORAGE_TANK
-                        else -> DestructibleType.MISSILE_SILO
-                    }
-                }
-                2 -> {
-                    // Canyon & Refinery
-                    when (Random.nextInt(6)) {
-                        0 -> DestructibleType.FUEL_SILO
-                        1 -> DestructibleType.OIL_STORAGE_TANK
-                        2 -> DestructibleType.GUN_TURRET
-                        3 -> DestructibleType.SUPPLY_BUNKER
-                        4 -> DestructibleType.MISSILE_SILO
-                        else -> DestructibleType.RADAR_TOWER
-                    }
-                }
-                else -> {
-                    // Orbital Citadel
-                    when (Random.nextInt(4)) {
-                        0 -> DestructibleType.RADAR_TOWER
-                        1 -> DestructibleType.GUN_TURRET
-                        2 -> DestructibleType.MISSILE_SILO
-                        else -> DestructibleType.SUPPLY_BUNKER
-                    }
-                }
-            }
-
-            val posX = Random.nextFloat() * (virtualResolution.width - groundType.width - 24f) + 12f
-            val groundObj = GroundDestructible.create(
-                type = groundType,
-                id = "ground_${System.currentTimeMillis()}_${Random.nextInt(1000)}",
-                initialPos = Vec2(posX, -35f),
-                projectilePool = engine.projectilePool,
-                audio = audio,
-                onDeathDrop = { dropPos -> spawnDrop(dropPos) },
-                onChainExplosion = { center, radius, dmg -> triggerAoeDamage(center, radius, dmg) }
-            ).apply {
-                // Drift downward at exact terrain scroll speed (36f)
-                velocity = Vec2(0f, 36f)
-            }
-
-            groundTargets.add(groundObj)
-            engine.itemsLayer.addObject(groundObj)
+    private fun checkGameOver() {
+        if (!playerShip.isAlive && !engine.context.isGameOver) {
+            engine.context.isGameOver = true
+            onGameOver?.invoke()
         }
     }
 
@@ -516,26 +354,12 @@ class RaptorGameCoordinator(
         engine.itemsLayer.addObject(pickup)
     }
 
-    private fun applyPickup(type: PickupType) {
+    fun applyPickup(type: PickupType) {
         RaptorPickup.create(type, "pickup_apply", Vec2.ZERO).applyEffect(playerShip, engine.context, audio)
     }
 
-    private fun triggerAoeDamage(center: Vec2, radius: Float, damage: Float) {
-        val radiusSq = radius * radius
-        // Damage adjacent aerial enemies
-        for (enemy in enemies) {
-            if (enemy.isAlive && (enemy.position - center).lengthSquared() <= radiusSq) {
-                val killed = enemy.takeDamage(damage, engine.particleLayer)
-                if (killed) engine.context.score += enemy.scoreAward
-            }
-        }
-        // Damage adjacent ground targets (chain reactions!)
-        for (target in groundTargets) {
-            if (!target.isDestroyed && (target.position - center).lengthSquared() <= radiusSq) {
-                val destroyed = target.takeDamage(damage, engine.particleLayer)
-                if (destroyed) engine.context.score += target.type.scoreValue
-            }
-        }
+    fun triggerAoeDamage(center: Vec2, radius: Float, damage: Float) {
+        collisionSystem.triggerAoeDamage(center, radius, damage, enemies, groundTargets)
     }
 
     fun fireSecondaryMissiles() {

@@ -49,7 +49,10 @@ Explore the topic guides below to start building your game:
 | **[Particles & Visual Effects](particles-and-effects.md)** | Procedural explosion archetypes, zero-allocation `ParticlePool`, screen shake, and real-time `ColorMatrix` saturation recovery. |
 | **[Context & Difficulty](context-and-difficulty.md)** | `GameContext`, continuous difficulty scaling (`0..100`), presets (`EASY`, `MEDIUM`, `DIFFICULT`, `HEAVY_METAL`), and dynamic property formulas. |
 | **[Audio & Input](audio-and-input.md)** | Procedural 16-bit sound synthesis, low-latency `SoundPool` integration, haptic feedback, and dual-mode touch controls. |
+| **[HUD & Arcade Controls](hud-and-controls.md)** | Safe viewports, orientation preservation, switchable arcade deck layouts, custom button shapes, and gamepad support. |
 | **[Cookbook: First 2D Game](cookbook.md)** | Step-by-step complete tutorial: Build "Gem Catcher", a working 2D arcade game from scratch in under 80 lines. |
+| **[Audit Rules & Guidelines](audit/rules.md)** | Project quality audit standards, 0–10 category scoring rubrics, AGENTS.md compliance checks, and report formats. |
+| **[Roadmap Execution Prompt](audit/prompt.md)** | Copy-paste prompt ready for advancing exactly one task in the audit roadmap per chat session. |
 
 ---
 

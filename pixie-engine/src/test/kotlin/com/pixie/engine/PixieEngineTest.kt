@@ -567,4 +567,19 @@ class PixieEngineTest {
         assertTrue(cell02.isDestroyed)
         assertEquals(0, matrix.remainingDestructibles())
     }
+
+    @Test
+    fun testInputPortDefaultsAndSecondaryAction() {
+        val mockInput = object : com.pixie.engine.core.ports.InputPort {
+            override val moveX: Float = -1f
+            override val moveY: Float = 0f
+            override val isJumpPressed: Boolean = false
+            override val isDuckPressed: Boolean = false
+            override val isActionPressed: Boolean = true
+        }
+
+        assertEquals(-1f, mockInput.moveX, 0.001f)
+        assertTrue(mockInput.isActionPressed)
+        assertFalse("isActionSecondaryPressed should default to false", mockInput.isActionSecondaryPressed)
+    }
 }

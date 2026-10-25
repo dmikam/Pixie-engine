@@ -18,6 +18,12 @@ import com.example.dinorun.DinoGameCoordinator
 import com.pixie.android.audio.AndroidSoundPoolAudioAdapter
 import com.pixie.android.haptic.AndroidHapticAdapter
 import androidx.activity.compose.BackHandler
+import androidx.compose.foundation.focusable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.input.key.onPreviewKeyEvent
+import android.view.KeyEvent
 import com.pixie.android.input.ControlMode
 import com.pixie.android.input.DualModeInputAdapter
 import com.pixie.android.ui.PixieGameCanvas
@@ -78,10 +84,22 @@ fun DinoGameScreen(
         onExitToMenu()
     }
 
+    val focusRequester = remember { FocusRequester() }
+    LaunchedEffect(Unit) {
+        focusRequester.requestFocus()
+    }
+
     Box(
         modifier = modifier
             .fillMaxSize()
             .safeDrawingPadding()
+            .focusRequester(focusRequester)
+            .focusable()
+            .onPreviewKeyEvent { keyEvent ->
+                val nativeEvent = keyEvent.nativeKeyEvent
+                val isDown = nativeEvent.action == KeyEvent.ACTION_DOWN
+                inputAdapter.handlePhysicalKeyEvent(nativeEvent.keyCode, isDown)
+            }
     ) {
         // Main Game Canvas with synchronized frame ticks
         PixieGameCanvas(

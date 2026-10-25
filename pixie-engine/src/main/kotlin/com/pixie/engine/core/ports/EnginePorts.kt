@@ -74,4 +74,6 @@ interface InputPort {
     val isJumpPressed: Boolean
     val isDuckPressed: Boolean
     val isActionPressed: Boolean
+    val isActionSecondaryPressed: Boolean
+        get() = false
 }

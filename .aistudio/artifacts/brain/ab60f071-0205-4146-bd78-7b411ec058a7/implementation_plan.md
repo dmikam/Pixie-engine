@@ -1,146 +1,146 @@
-# Standalone 2D Pixel-Art Game Engine & Proof-of-Concept Client
+# Safe Viewport Architecture & Customizable Arcade Deck
 
-Extract and architect a standalone, reusable 2D pixel-art game engine library across a multi-module Gradle architecture (`:core-engine`, `:core-ui`, and `:app`), featuring a unified fixed-step game loop, 5-layer strictly ordered rendering pipeline with shared horizon line, ColorMatrix grayscale-to-color restoration, and an Android client featuring the Dinorun endless runner with dual-mode controls.
+Implement seamless horizontal orientation handling, engine-level non-overlapping viewport calculation, 3 switchable landscape presentation modes (Centered Side Wings, Retro Cabinet Bezel, Adaptive Docked Fit), and a fully customizable Arcade / Console Button framework supporting both on-screen touch and physical controllers (gamepad / keyboard).
+
+---
 
 ## User Review & Critical Decisions
 
 > [!IMPORTANT]
-> The following architectural decisions have been confirmed and incorporated into the design:
-
-- **Confirmed Decision 1 (Sample Game)**: The proof-of-concept application in `:app` will showcase **Dinorun endless runner with color recovery**, testing horizontal scrolling, dynamic physics, asteroid/pterodactyl hazards, and the grayscale-to-color transformation.
-- **Confirmed Decision 2 (Module Architecture)**: Strict multi-module separation:
-  - `:core-engine`: Pure Kotlin module (100% platform-independent, zero Android/Compose dependencies).
-  - `:core-ui`: Android library module containing hardware/platform adapters (Canvas nearest-neighbor renderer, global Android ColorMatrix grayscale-to-color filter, SoundPool audio adapter, Vibrator haptics, and touch/gesture input handlers).
-  - `:app`: Android client application using Jetpack Compose to host the game, HUD, dialogs, and game engine controller.
-- **Confirmed Decision 3 (Input Scheme)**: Dual-mode input with real-time toggle between on-screen virtual buttons (D-pad / Jump / Duck) and swipe/tap touch gestures.
+> The following user-confirmed choices from Phase 1 have been incorporated into this plan:
+> - **Landscape Viewport Modes**: Implement all three viewport modes with a live showcase switch (Centered Aspect Ratio with Side Wings, Retro Cabinet Bezel, and Adaptive Dynamic Fit).
+> - **Arcade Button Placements**: Implement all three placements with a live showcase switch (Split Side Wings, Docked Bottom Console Strip, and Floating Adjustable Controls).
+> - **Input Support**: Provide first-class support for both physical controllers (gamepads, Bluetooth arcade sticks, hardware keyboards) and on-screen touch controls, with an auto-detect / toggle switch.
 
 ---
 
 ## 1. Overview & Core Concept
 
-- **What It Does**: Provides a lightweight, high-performance 2D pixel-art game engine capable of powering horizontal scrollers, vertical scrollers, and fixed-screen games. Decouples game logic, physics, and state updates into a pure Kotlin library while packaging standardized Android rendering, audio, haptics, and inputs into reusable adapters.
-- **Target Audience**: Mobile game developers and players wanting responsive, retro pixel-art games with 60 FPS deterministic gameplay.
-- **Key Value**: Clean separation of concerns. Game simulation can run headlessly or be unit-tested without Android mocks, while the visual presentation features a rich 5-layer parallax atmosphere with synchronized celestial horizon and dynamic color grading.
+When switching between portrait and landscape orientations, retro games need to preserve uninterrupted gameplay while dynamically adapting their layout. Currently:
+1. Android recreates the Activity on rotation, destroying engine state and restarting the active game.
+2. The Top Status Bar and Bottom Actions Deck float directly over the fullscreen canvas; in landscape, the top bar covers the bricks and the bottom bar occludes the paddle/carriage.
+
+This update establishes an engine-level **Safe Viewport & Arcade Deck Architecture** in `pixie-android` and `pixie-engine`, ensuring that:
+- Game worlds render into an un-occluded, aspect-ratio-correct safe zone where neither bricks nor paddle are ever obstructed.
+- Orientation changes are handled natively without Activity destruction or state loss.
+- Players can toggle between three landscape layouts and three arcade button placements on the fly.
+- Physical gamepads and keyboards work out of the box with zero configuration alongside tactile, low-latency on-screen arcade buttons.
 
 ---
 
 ## 2. User Experience & Visual Design
 
-### Key User Flows
-1. **Launch & Menu Screen**: The player enters the prehistoric world. The world is initially drained of color (ash-grey prehistoric atmosphere).
-2. **Gameplay**:
-   - Fixed-step 60 FPS runner simulation.
-   - Dino runs, jumps over boulders and bones, and ducks under flying Pterodactyls.
-   - Day/Night cycle transits across the sky, dynamically coloring stars, sun, and clouds.
-   - Collecting primal sparks/energy restores color to the world via the `ColorMatrix` grayscale-to-color recovery pipeline.
-3. **Controls**:
-   - Player can toggle between **On-Screen Virtual Buttons** (Jump, Duck, Action) and **Direct Touch Gestures** (Tap to jump, Swipe down to duck) via an on-screen HUD pill.
-4. **Game Over & Restart**: Clean score summary, distance run, color recovery percentage achieved, and instant restart with state reset.
+### Landscape Viewport Presentation Modes
+1. **Mode A: Centered Aspect Ratio with Side Control Wings**
+   - The game canvas is centered with its authentic vertical aspect ratio preserved.
+   - Left and right flanks become dedicated tactile control decks (left D-pad/steerer, right arcade buttons) with no overlap over the game field.
+2. **Mode B: Retro Arcade Cabinet Bezel**
+   - The playfield is embedded inside an arcade cabinet frame featuring CRT scanlines/phosphor glow styling, metallic edge molding, and marquee banner badges.
+   - Arcade buttons are styled as inset microswitch buttons embedded directly into the lower bezel wings.
+3. **Mode C: Adaptive Dynamic Fit (Docked Bars)**
+   - The game canvas dynamically claims the exact remaining height between the top status bar and bottom docked action strip, recalculating its scale and offset so elements (e.g. carriage at y=580) are 100% visible and un-clipped.
 
-### Visual Identity & Theme
-- **Aesthetic Direction**: 90s retro arcade pixel-art with modern fluid parallax depth and post-processing color grading.
-- **Palette & Atmosphere**:
-  - *Desaturated / Ash State*: Neutral grays, charcoal stone, pale slate sky.
-  - *Full Color Recovery*: Rich jurassic greens (`#388E3C`), volcanic magma orange/red (`#D32F2F`, `#FF5722`), amber sun (`#FFB300`), deep twilight indigo (`#1A237E`).
-- **Typography & HUD**: Crisp retro pixel typography, minimal modern M3 HUD chips for score, distance, multiplier, and color recovery progress.
+### Customizable Arcade / Console Deck
+- **Tactile Shapes**: Choose from classic Circular arcade caps, Octagonal competition buttons, Rounded Bevel slabs, or Pill buttons.
+- **Button Visual Types**: Customizable via Text/Letter (A, B, X, Y, TURBO), Vector Material Icons, or Custom Retro `PixelSprite` icons.
+- **Microswitch Haptics & Response**: Zero-lag immediate pointer-down trigger with release safety and tactile haptic vibration pulses.
+- **Customizable Layouts**:
+  - *Split Wings*: Left hand handles directional navigation (D-Pad / Steerer); right hand fires actions.
+  - *Docked Bottom Strip*: Traditional horizontal arcade shelf.
+  - *Floating / Draggable*: Floating buttons that can be repositioned and toggled by the user.
+
+### Seamless Orientation & Input Switching
+- Smooth rotation without audio stutter, canvas flicker, or game restart.
+- An accessible **Arcade Quick Settings Panel** (floating micro-gear or options chip) accessible during gameplay to switch presentation modes, arcade button arrangements, and input methods in real time.
 
 ---
 
 ## 3. Key Product Decisions & Trade-Offs
 
-### Decision 1: Pure Kotlin `:core-engine` (No Android / Compose imports)
-- *Chosen Approach*: Put all math (`Vec2`, `RectF`), physics (AABB collision detection), game loop, entity state machines, chunk generation, and view modes in `:core-engine` with zero platform dependencies.
-- *Why*: Allows the engine to be reused across Android, Desktop JVM, and iOS (Kotlin Multiplatform ready), and enables lightning-fast local unit tests without Robolectric or Android runtime overhead.
-- *Alternative Considered*: Combining everything into a single Android library module. Rejected because it couples game physics to Android OS lifecycles.
+- **Decision 1: Activity Configuration Changes vs State Serialization**
+  - *Chosen Approach*: Add `android:configChanges="orientation|screenSize|smallestScreenSize|screenLayout|keyboard|keyboardHidden"` to `MainActivity` in `AndroidManifest.xml`.
+  - *Why*: Eliminates Activity destruction on rotation, preventing game loop resets, re-allocations, and audio drops, while letting Jetpack Compose recompose smoothly to the new window constraints.
+  - *Alternatives Considered*: Retaining state in ViewModels / Saveable. Still causes Activity teardown, SoundPool re-creation, and dropped audio threads.
 
-### Decision 2: 5-Layer Stack with Shared Coordinate Horizon
-- *Chosen Approach*: Strictly ordered layers with a unified `horizonY` reference coordinate:
-  1. **Layer 1 (Sky)**: Celestial body (sun/moon) orbiting around a celestial origin, dynamic day/night ambient color shift.
-  2. **Layer 2 (Clouds)**: Atmospheric drift independent of ground movement.
-  3. **Layer 3 (Background)**: Volcanoes, mountain peaks, and forests with depth-based parallax factor `parallax = z / (z + 1)`. Non-collidable.
-  4. **Layer 4 (Ground / Gamefield)**: Main collision plane with height contours and pit intervals.
-  5. **Layer 5 (Game Items)**: Interactive entities (Dino, hazards, collectibles, particle effects).
-- *Why*: Eliminates visual disconnects where background mountains or sun appear below or disconnected from the ground plane.
+- **Decision 2: Slot-Based `PixieGameScaffold` vs Game-Specific Layouts**
+  - *Chosen Approach*: Build a reusable `PixieGameScaffold` in `pixie-android` that encapsulates top status bar, bottom/side action decks, cabinet bezels, safe viewport math, and orientation handling.
+  - *Why*: Solves the overlap issue universally across Arkanoid, Raptor, Dinorun, and future engine games rather than duplicating ad-hoc layout math in every screen.
 
-### Decision 3: ColorMatrix Grayscale-to-Color Post-Processing
-- *Chosen Approach*: The engine calculates `colorRecoveryProgress: Float` (0.0 to 1.0). The `:core-ui` adapter constructs an Android `ColorMatrix` that smoothly scales saturation from 0% (full monochrome) to 100% (vibrant full color), plus a subtle warm tint as progress nears completion.
-- *Why*: Highly efficient GPU-accelerated post-process that applies uniformly to all layers and sprites without requiring dual color/gray sprite assets.
+- **Decision 3: Unified Input Pipeline (Touch + Physical Controller)**
+  - *Chosen Approach*: Extend `DualModeInputAdapter` with a `GamepadInputHandler` that consumes `KeyEvent` (DPAD_LEFT, DPAD_RIGHT, DPAD_UP, DPAD_DOWN, BUTTON_A, BUTTON_B, KEYCODE_SPACE, Arrow Keys) and `MotionEvent` (analog sticks), mapping directly into `InputPort`.
+  - *Why*: Works identically across touch screens, Bluetooth gamepads (Xbox, PlayStation, 8BitDo), Android TV / Chromebooks, and PC keyboards in emulator environments.
 
 ---
 
-## 4. Technical Architecture & Data Strategy
-
-### System Architecture Diagram
+## 4. Technical Architecture & Component Hierarchy
 
 ```
 ┌────────────────────────────────────────────────────────────────────────┐
-│                               :app                                     │
-│  - MainActivity & Compose Navigation                                   │
-│  - DinorunGameScreen (Compose UI, HUD, Dialogs)                        │
-│  - DinoGameViewModel (Orchestrates Loop, State, Persistence)           │
-└────────────────────────────────────┬───────────────────────────────────┘
-                                     │ depends on
-                   ┌─────────────────┴─────────────────┐
-                   ▼                                   ▼
-┌──────────────────────────────────────┐  ┌──────────────────────────────┐
-│              :core-ui                │  │         :core-engine         │
-│  (Android Library)                   │  │  (Pure Kotlin Library)       │
-│                                      │  │                              │
-│  - CanvasRenderer (Nearest-Neighbor) │  │  - GameLoop (Fixed Timestep) │
-│  - ColorMatrix Recovery Pipeline     │  │  - GameViewMode Strategies   │
-│  - SoundPoolAudioAdapter             │  │  - 5-Layer Rendering Stack   │
-│  - AndroidHapticAdapter              │  │  - AABB Physics & Collisions │
-│  - VirtualController & Gestures      │  │  - Entity State Machine      │
-│  - PixelSpriteSheet Cache            │  │  - ChunkManager & Generation │
-│                                      │  │  - Ports & Interfaces        │
-└──────────────────────────────────────┘  └──────────────────────────────┘
-                   │                                   ▲
-                   └───────────────────────────────────┘
-                       implements Ports & Interfaces
+│                          MainActivity                                  │
+│  (configChanges: orientation, screenSize, keyboard, screenLayout)       │
+└──────────────────────────────────┬─────────────────────────────────────┘
+                                   │
+                                   ▼
+┌────────────────────────────────────────────────────────────────────────┐
+│                       PixieGameScaffold                                │
+│  - Window Size / Orientation Detector (Portrait vs Landscape)          │
+│  - Mode Switcher State: ViewportMode, ControlPlacement, InputSource    │
+│  - Key Event Listener (Gamepad / Keyboard interceptor)                 │
+├──────────────────────────────────┬─────────────────────────────────────┤
+│ 1. Engine Top Status Bar Slot    │ Non-overlapping status surface      │
+├──────────────────────────────────┼─────────────────────────────────────┤
+│ 2. Center Safe Viewport Slot     │ [Mode A: Centered with Side Wings]  │
+│    (PixieGameCanvas inside       │ [Mode B: Retro Cabinet Bezel]       │
+│     aspect-constrained frame)    │ [Mode C: Adaptive Docked Fit]       │
+├──────────────────────────────────┼─────────────────────────────────────┤
+│ 3. Arcade Deck Slot              │ [Split Side Wings / Bottom / Float] │
+│    (ArcadeControlDeck)           │ - Customizable Buttons & D-Pad      │
+│                                  │ - Sprites, Shapes, Icons & Labels   │
+└──────────────────────────────────┴─────────────────────────────────────┘
+                                   │
+                                   ▼
+┌────────────────────────────────────────────────────────────────────────┐
+│                        Engine Ports & Adapters                         │
+│  - DualModeInputAdapter: Touch + Gamepad/Keyboard Key Event dispatch   │
+│  - AndroidCanvasRenderer: Safe letterbox transformation                │
+│  - PixieEngine: Deterministic game physics & rendering                 │
+└────────────────────────────────────────────────────────────────────────┘
 ```
 
-### Module Specifications
-
-#### 1. `:core-engine`
-- `com.engine.core.loop.GameLoop`: Fixed time step accumulator (e.g. 60 updates/sec, `dt = 0.0166s`), alpha interpolation factor for smooth rendering.
-- `com.engine.core.math.Vec2` & `com.engine.core.math.BoundingBox`: Pure Kotlin 2D vector math and AABB collision queries.
-- `com.engine.core.viewmode.GameViewMode`:
-  - `HorizontalScrollerViewMode`: Tracks player horizontal progress, dynamically updates parallax offsets.
-  - `VerticalScrollerViewMode`: Vertical camera scrolling with bounds.
-  - `FixedScreenViewMode`: Static arena camera (Arkanoid mode).
-- `com.engine.core.layers`:
-  - `SkyLayer`: Celestial angle, sun/moon trajectory, star twinkle, day/night ambient color.
-  - `CloudLayer`: Independent drift velocity, procedural cloud positions.
-  - `ParallaxLayer`: Background mountain/volcano silhouettes with strict z-index depth scaling.
-  - `GroundLayer`: Continuous ground segments, scalar height changes, pit generation.
-  - `EntitiesLayer`: Player, obstacles, hazards, particles, items.
-  - `HorizonConstraint`: Centralized `horizonY` coordinate ensuring perfect horizon alignment between Sky, Background, and Ground.
-- `com.engine.core.color.ColorRecoveryTracker`: Progress float `[0..1]`, thresholds, and color unlock events.
-- `com.engine.core.ports`:
-  - `RenderCommandPort`: Decoupled draw commands (`DrawRect`, `DrawSprite`, `DrawText`, `FillColor`).
-  - `AudioPort`: Sound effects trigger interface.
-  - `HapticPort`: Haptic feedback interface.
-  - `InputPort`: Normalized input state query.
-
-#### 2. `:core-ui`
-- `com.engine.ui.render.PixelArtCanvas`: Android Compose/Canvas adapter scaling low-resolution pixel art (e.g. 320x180 virtual resolution) to physical device screens using nearest-neighbor filtering.
-- `com.engine.ui.color.ColorMatrixFilterAdapter`: Builds Android `ColorMatrixColorFilter` dynamically from color recovery progress.
-- `com.engine.ui.audio.SoundPoolAudioAdapter`: Manages synthesized or sound asset playback for jump, hit, milestone, score, and ambient loops.
-- `com.engine.ui.input.DualInputController`: Manages on-screen virtual buttons (D-pad, jump, duck) and gesture detection (touch swipes/taps) with runtime switching.
-
-#### 3. `:app`
-- Dinorun client wiring:
-  - Game entity setup: Dino runner, Pterodactyls, Cactus clusters, volcanic meteors, primal sparks.
-  - Dynamic score, high score tracking, color recovery level indicator.
-  - Game Over and Pause dialogs.
-  - Settings bar for switching controls and viewing engine metrics (FPS, fixed update count, active entity count).
+### Component Details
+1. **`AndroidManifest.xml`**:
+   - Update `MainActivity` declaration with `android:configChanges="orientation|screenSize|smallestScreenSize|screenLayout|keyboard|keyboardHidden"`.
+2. **`pixie-android/src/main/kotlin/com/pixie/android/ui/PixieGameScaffold.kt`**:
+   - The universal container providing:
+     - Viewport Mode switcher (`CENTERED_WINGS`, `CABINET_BEZEL`, `ADAPTIVE_FIT`).
+     - Arcade Placement switcher (`SPLIT_WINGS`, `BOTTOM_STRIP`, `FLOATING`).
+     - Input Method switcher (`HYBRID_AUTO`, `TOUCH_ONLY`, `PHYSICAL_ONLY`).
+     - Precise bounds calculation ensuring the canvas never occupies space reserved by the status bar or action bar.
+3. **`pixie-android/src/main/kotlin/com/pixie/android/input/ArcadeControlDeck.kt` & `ArcadeButtonConfig.kt`**:
+   - Reusable, customizable arcade button model:
+     - Shape (`CIRCLE`, `ROUNDED_RECT`, `OCTAGON`, `PILL`)
+     - Visual content (Text, Icon, or `PixelSprite`)
+     - Size & Color styling
+     - Target action binding (`MOVE_LEFT`, `MOVE_RIGHT`, `MOVE_UP`, `MOVE_DOWN`, `ACTION_PRIMARY`, `ACTION_SECONDARY`, `PAUSE`)
+4. **`pixie-android/src/main/kotlin/com/pixie/android/input/PhysicalControllerHandler.kt`**:
+   - Intercepts key presses and joystick motions from physical gamepads, keyboards, and arcade sticks, forwarding them directly to `DualModeInputAdapter`.
+5. **`ArkanoidGameScreen.kt` & Coordinator**:
+   - Refactor to use `PixieGameScaffold` and the new `ArcadeControlDeck`.
+   - Ensure paddle / carriage movement drag gestures calibrate precisely against the letterboxed viewport.
+   - Expose the Quick Settings showcase drawer/chip to toggle all 3 viewport modes and 3 button placements in real time.
 
 ---
 
-## 5. Implementation Sequence
-1. Update `settings.gradle.kts` to register `:core-engine` and `:core-ui`.
-2. Configure `libs.versions.toml` and root `build.gradle.kts` for Android library and Kotlin JVM modules.
-3. Implement `:core-engine` with pure Kotlin game loop, math, 5-layer stack, view modes, physics, and chunk manager.
-4. Implement `:core-ui` with Canvas nearest-neighbor renderer, ColorMatrix filter, SoundPool adapter, and input controls.
-5. Implement `:app` client with the Dinorun minigame, Compose screen, HUD, and dual-mode controls.
-6. Verify compilation with `compile_applet` and test with Robolectric unit tests.
+## 5. Verification Plan
+
+1. **Compilation Verification**:
+   - Run `compile_applet` to ensure zero compilation or dependency errors.
+2. **Orientation Handling Test**:
+   - Verify that rotating between portrait and landscape maintains the game loop, keeps music/audio playing, and preserves score/lives/bricks without resetting.
+3. **Safe Viewport & Non-Overlap Test**:
+   - Test in landscape orientation to verify that top bricks are completely clear of the status bar and the carriage/paddle at the bottom is completely clear of the buttons bar.
+4. **Showcase Switcher Verification**:
+   - Cycle between the 3 viewport modes (Centered Side Wings, Retro Cabinet Bezel, Adaptive Fit) and 3 arcade button placements (Split Wings, Bottom Strip, Floating) in real time.
+5. **Input Verification**:
+   - Test on-screen arcade buttons (immediate mousedown, continuous hold).
+   - Test hardware keyboard keys (Arrow keys, A/D, Space, Enter) and gamepad buttons.
