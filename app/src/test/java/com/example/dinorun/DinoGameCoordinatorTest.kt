@@ -9,6 +9,7 @@ import com.example.dinorun.world.PrehistoricWorldDefinition
 import com.example.dinorun.world.VolcanicCraterWorldDefinition
 import com.pixie.android.audio.AndroidSoundPoolAudioAdapter
 import com.pixie.android.haptic.AndroidHapticAdapter
+import com.pixie.android.input.ControlMode
 import com.pixie.android.input.DualModeInputAdapter
 import com.pixie.engine.core.math.Vec2
 import org.junit.Assert.assertEquals
@@ -317,6 +318,47 @@ class DinoGameCoordinatorTest {
             val boostedRunSpeed = player.velocity.x
 
             assertTrue("Run speed should scale up with higher difficulty", boostedRunSpeed > baseRunSpeed)
+        } finally {
+            audio.release()
+        }
+    }
+
+    @Test
+    fun `touch gestures in touch mode trigger jump and duck on coordinator player`() {
+        val (audio, input, coordinator) = createContextAndCoordinator()
+        try {
+            input.currentMode = ControlMode.TOUCH_GESTURES
+
+            // Tap or swipe-up triggers jump
+            input.triggerGestureJump()
+            coordinator.updateInputs()
+
+            val player = coordinator.player
+            assertFalse("Jump gesture should make player airborne", player.isGrounded)
+            assertTrue("Jump should give negative y velocity", player.velocity.y < 0f)
+
+            input.releaseGestureJump()
+            coordinator.updateInputs()
+
+            // Step player until landed
+            repeat(20) {
+                player.update(0.05f, coordinator.engine.context)
+            }
+            assertTrue("Player should land back on ground", player.isGrounded)
+
+            // Swipe-down triggers duck
+            input.triggerGestureDuck(true)
+            coordinator.updateInputs()
+
+            assertTrue("Duck gesture should make player duck", player.isDucking)
+            assertEquals(Vec2(20f, 12f), player.size)
+
+            // Releasing duck gesture restores running posture
+            input.triggerGestureDuck(false)
+            coordinator.updateInputs()
+
+            assertFalse("Releasing duck gesture should restore running", player.isDucking)
+            assertEquals(Vec2(16f, 16f), player.size)
         } finally {
             audio.release()
         }

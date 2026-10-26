@@ -46,7 +46,7 @@ To validate the engine across diverse 2D game paradigms, we designed 4 distinct 
 
 ## 2. 🚀 Raptor (Vertical Arcade Scroller) — CLOSED
 - **Genre:** Vertical Top-Down Arcade Shoot 'em Up (Shmup)
-- **Status:** `CLOSED (Completed & Validated in v0.5)` — *See [DOCS/raptor-roadmap.md](raptor-roadmap.md)*
+- **Status:** `CLOSED (Completed & Validated in v0.5)`
 - **Key Mechanics:**
   - Continuous vertical upward flight over changing planetary surfaces and cloud covers.
   - Smooth 2D touch drag / virtual analog stick ship steering with screen boundary clamping.
@@ -65,7 +65,7 @@ To validate the engine across diverse 2D game paradigms, we designed 4 distinct 
 
 ## 3. 🧱 Arkanoid (Fixed-Screen Brick Breaker) — CLOSED
 - **Genre:** Fixed-Screen Precision Arcade Action
-- **Status:** `CLOSED (Completed & Validated in v0.6)` — *See [DOCS/arkanoid-roadmap.md](arkanoid-roadmap.md)*
+- **Status:** `CLOSED (Completed & Validated in v0.6)`
 - **Key Mechanics:**
   - Horizontal paddle movement along the bottom screen boundary with touch-drag & dual-mode buttons.
   - High-velocity energy ball bouncing off arena walls, paddle segments, and bricks.
@@ -99,7 +99,7 @@ To validate the engine across diverse 2D game paradigms, we designed 4 distinct 
 
 ## 📊 Engine Capabilities Cross-Matrix
 
-| Subsystem / Feature | Dinorun (Closed) | Raptor (Closed) | Arkanoid (Next) | Chiki (Planned) |
+| Subsystem / Feature | Dinorun (Closed) | Raptor (Closed) | Arkanoid (Closed) | Chiki (Planned) |
 | :--- | :---: | :---: | :---: | :---: |
 | **Parallax Scrolling** | Horizontal (5 layers) | Vertical (Multi-biome) | Static Arena | Bi-directional |
 | **Camera ViewMode** | `HorizontalScroller` | `VerticalScroller` | `FixedScreen` | `PlatformerFollow` |

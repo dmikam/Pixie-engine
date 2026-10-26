@@ -96,6 +96,7 @@ fun DinoGameScreen(
             fps = fps,
             currentMode = currentControlMode,
             pixelsGap = pixelsGap,
+            audioAdapter = audioAdapter,
             onToggleControlMode = {
                 val nextMode = if (currentControlMode == ControlMode.VIRTUAL_BUTTONS) {
                     ControlMode.TOUCH_GESTURES
@@ -123,7 +124,11 @@ fun DinoGameScreen(
 
     val controlDeckContent: @Composable () -> Unit = {
         if (currentControlMode == ControlMode.VIRTUAL_BUTTONS) {
-            DinoVirtualControlDeck(inputAdapter = inputAdapter)
+            DinoVirtualControlDeck(
+                inputAdapter = inputAdapter,
+                audioAdapter = audioAdapter,
+                player = coordinator.player
+            )
         }
     }
 

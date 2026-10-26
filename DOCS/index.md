@@ -58,9 +58,10 @@ Explore the topic guides below to start building your game:
 
 ## 🎮 Reference Proof-of-Concepts (PoCs)
 
-The repository includes two fully completed reference games demonstrating the engine across two distinct paradigms:
+The repository includes three fully completed reference games demonstrating the engine across distinct paradigms:
 - **[Dinorun](roadmap.md#1--dinorun-horizontal-endless-scroller--closed)**: Horizontal endless runner featuring 5-layer parallax, procedural chunk generation, and real-time color recovery.
-- **[Raptor](raptor-roadmap.md)**: Vertical top-down combat shmup featuring high-density bullet pools, homing missiles, procedural particle explosions, ground destructibles, and multi-stage boss encounters.
+- **[Raptor](roadmap.md#2--raptor-vertical-arcade-scroller--closed)**: Vertical top-down combat shmup featuring high-density bullet pools, homing missiles, procedural particle explosions, ground destructibles, and multi-stage boss encounters.
+- **[Arkanoid](roadmap.md#3--arkanoid-fixed-screen-brick-breaker--closed)**: Fixed-screen brick breaker featuring continuous collision detection (CCD), destructible matrix layer, bounce angle physics, and falling power capsules.
 
 ---
 

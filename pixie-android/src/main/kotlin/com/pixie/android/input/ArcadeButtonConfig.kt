@@ -22,6 +22,8 @@ enum class ArcadeActionType {
     ACTION_PRIMARY,
     ACTION_SECONDARY,
     PAUSE,
+    JUMP,
+    DUCK,
     CUSTOM
 }
 
