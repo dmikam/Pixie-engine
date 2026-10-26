@@ -13,16 +13,14 @@ import com.pixie.engine.core.ports.HapticFeedbackType
 import com.pixie.engine.core.ports.HapticPort
 import com.pixie.engine.core.sprite.AnimationFrame
 import com.pixie.engine.core.sprite.AnimationSequence
-import com.pixie.engine.core.sprite.PixelSprite
 import com.pixie.engine.core.weapon.Projectile
 import com.pixie.engine.core.weapon.ProjectilePool
-import com.pixie.engine.core.weapon.StandardWeapons
-import com.pixie.engine.core.weapon.WeaponDefinition
 import com.pixie.engine.core.weapon.WeaponSystem
 
 /**
  * Player Interceptor craft in Raptor.
  * Inherits from engine core [PixiePlayer] base class to eliminate entity boilerplate.
+ * Delegates weapons and projectile firing math to [RaptorWeaponController].
  */
 class RaptorShip(
     initialPosition: Vec2,
@@ -51,27 +49,25 @@ class RaptorShip(
     private var shieldRechargeCooldown: Float = 0f
     private val shieldRechargeDelay: Float = 2.5f
 
-    // Weapon Inventory & Tiers
-    var weaponTier: Int = 1 // 1 = Single Vulcan, 2 = Twin Vulcan, 3 = Twin Plasma, 4 = Quad Ion
+    // Weapon Inventory & Tiers delegated to RaptorWeaponController
+    val weaponController = RaptorWeaponController(projectilePool, audio, haptics)
+
+    var weaponTier: Int
+        get() = weaponController.weaponTier
+        set(value) { weaponController.weaponTier = value }
+
+    var activeWeaponId: String
+        get() = weaponController.activeWeaponId
+        set(value) { weaponController.equipWeapon(value) }
+
+    val primaryWeaponSystem: WeaponSystem
+        get() = weaponController.primaryWeaponSystem
+
+    val missileWeaponSystem: WeaponSystem
+        get() = weaponController.missileWeaponSystem
+
     var missileSalvoes: Int = 6
     var megaBombs: Int = 2
-
-    // Primary & Secondary Weapon Controllers
-    val primaryWeaponSystem = WeaponSystem(
-        weapon = StandardWeapons.VULCAN_CANNON,
-        pool = projectilePool,
-        isPlayer = true,
-        audio = audio,
-        haptics = haptics
-    )
-
-    val missileWeaponSystem = WeaponSystem(
-        weapon = StandardWeapons.HOMING_MISSILES,
-        pool = projectilePool,
-        isPlayer = true,
-        audio = audio,
-        haptics = haptics
-    )
 
     // Touch steering smoothing
     var targetPosition: Vec2 = initialPosition
@@ -79,9 +75,9 @@ class RaptorShip(
 
     init {
         // Register directional flight animations
-        setAnimation("neutral", AnimationSequence("neutral", listOf(AnimationFrame(SPRITE_NEUTRAL, 0.15f))))
-        setAnimation("bank_left", AnimationSequence("bank_left", listOf(AnimationFrame(SPRITE_BANK_LEFT, 0.15f))))
-        setAnimation("bank_right", AnimationSequence("bank_right", listOf(AnimationFrame(SPRITE_BANK_RIGHT, 0.15f))))
+        setAnimation("neutral", AnimationSequence("neutral", listOf(AnimationFrame(RaptorShipSprites.SPRITE_NEUTRAL, 0.15f))))
+        setAnimation("bank_left", AnimationSequence("bank_left", listOf(AnimationFrame(RaptorShipSprites.SPRITE_BANK_LEFT, 0.15f))))
+        setAnimation("bank_right", AnimationSequence("bank_right", listOf(AnimationFrame(RaptorShipSprites.SPRITE_BANK_RIGHT, 0.15f))))
         playAnimation("neutral")
 
         // Dynamic parameter calculation based on continuous difficulty, active perks, and context
@@ -94,62 +90,16 @@ class RaptorShip(
                 perkBonus = perkSpeedMult
             )
             ship.parameters["speed"] = calculatedSpeed
-
-            // Configure primary weapon tier
-            updateWeaponTier(ctx)
+            weaponController.updateWeaponTier(ctx)
         }
     }
-
-    var activeWeaponId: String = "vulcan"
 
     fun equipWeapon(weaponId: String) {
-        activeWeaponId = weaponId
-        updateWeaponTier(GameContext())
-    }
-
-    private fun updateWeaponTier(context: GameContext) {
-        when (activeWeaponId) {
-            "odin_laser" -> {
-                primaryWeaponSystem.weapon = StandardWeapons.ODIN_LASER
-                primaryWeaponSystem.shotCount = if (weaponTier >= 3) 2 else 1
-            }
-            "deathray" -> {
-                primaryWeaponSystem.weapon = StandardWeapons.DEATHRAY
-                primaryWeaponSystem.shotCount = 1
-            }
-            "twin_plasma" -> {
-                primaryWeaponSystem.weapon = StandardWeapons.TWIN_PLASMA
-                primaryWeaponSystem.shotCount = if (weaponTier >= 3) 4 else 2
-            }
-            else -> {
-                when (weaponTier) {
-                    1 -> {
-                        primaryWeaponSystem.weapon = StandardWeapons.VULCAN_CANNON
-                        primaryWeaponSystem.shotCount = 1
-                    }
-                    2 -> {
-                        primaryWeaponSystem.weapon = StandardWeapons.VULCAN_CANNON
-                        primaryWeaponSystem.shotCount = 2
-                    }
-                    3 -> {
-                        primaryWeaponSystem.weapon = StandardWeapons.TWIN_PLASMA
-                        primaryWeaponSystem.shotCount = 2
-                    }
-                    else -> {
-                        primaryWeaponSystem.weapon = StandardWeapons.TWIN_PLASMA
-                        primaryWeaponSystem.shotCount = 4
-                    }
-                }
-            }
-        }
+        weaponController.equipWeapon(weaponId)
     }
 
     fun upgradeWeapon() {
-        if (weaponTier < 4) {
-            weaponTier++
-            audio?.playSound(AudioEvent.POWERUP_PICKUP)
-            haptics?.trigger(HapticFeedbackType.DOUBLE_PULSE)
-        }
+        weaponController.upgradeWeapon()
     }
 
     fun addMissiles(count: Int = 4) {
@@ -179,26 +129,14 @@ class RaptorShip(
     ): Boolean {
         if (megaBombs <= 0) return false
         megaBombs--
-
-        audio?.playSound(AudioEvent.EXPLOSION_LARGE)
-        haptics?.trigger(HapticFeedbackType.HEAVY)
-
-        // Clear all active incoming enemy bullets!
-        for (bullet in activeEnemyProjectiles) {
-            bullet.isAlive = false
-            particleLayer?.spawnSparks(bullet.position, count = 4, color = 0xFF00E5FF.toInt())
-        }
-
-        // Damage all visible enemies on screen
-        for (enemy in visibleEnemies) {
-            if (enemy.isAlive) {
-                particleLayer?.spawnExplosion(ExplosionType.AERIAL_EXPLOSION, enemy.position, scale = 1.2f)
-                enemy.onCollision(this, GameContext())
-            }
-        }
-
-        // Screen-wide shockwave at ship center
-        particleLayer?.spawnExplosion(ExplosionType.SHOCKWAVE, position + (size * 0.5f), scale = 2.0f)
+        weaponController.triggerMegaBomb(
+            shipPos = position,
+            shipSize = size,
+            sourcePlayer = this,
+            visibleEnemies = visibleEnemies,
+            activeEnemyProjectiles = activeEnemyProjectiles,
+            particleLayer = particleLayer
+        )
         return true
     }
 
@@ -239,36 +177,13 @@ class RaptorShip(
     }
 
     fun firePrimary(context: GameContext, outList: MutableList<Projectile>): Boolean {
-        val nosePos = position + Vec2(size.x * 0.5f, 0f)
-        return primaryWeaponSystem.fire(
-            origin = nosePos,
-            headingRad = -1.5707963f, // straight up
-            context = context,
-            outList = outList
-        )
+        return weaponController.firePrimary(position, size, context, outList)
     }
 
     fun fireMissiles(context: GameContext, target: PixieObject?, outList: MutableList<Projectile>): Boolean {
         if (missileSalvoes <= 0) return false
-
-        missileWeaponSystem.targetGetter = { target }
-        val wingLeft = position + Vec2(2f, 4f)
-        val wingRight = position + Vec2(size.x - 2f, 4f)
-
-        val fired = missileWeaponSystem.fire(
-            origin = wingLeft,
-            headingRad = -1.5707963f,
-            context = context,
-            outList = outList
-        )
+        val fired = weaponController.fireMissiles(position, size, context, target, outList)
         if (fired) {
-            // Also fire right wing missile
-            missileWeaponSystem.fire(
-                origin = wingRight,
-                headingRad = -1.5707963f,
-                context = context,
-                outList = outList
-            )
             missileSalvoes--
         }
         return fired
@@ -300,7 +215,6 @@ class RaptorShip(
             particleLayer?.spawnSparks(position + (size * 0.5f), count = 10, color = 0xFFFF5722.toInt())
         }
 
-        // Brief invulnerability flash handled by PixiePlayer
         grantInvulnerability(0.8f)
 
         if (hull <= 0f) {
@@ -332,8 +246,7 @@ class RaptorShip(
     }
 
     override fun update(dt: Float, context: GameContext) {
-        primaryWeaponSystem.update(dt)
-        missileWeaponSystem.update(dt)
+        weaponController.update(dt)
 
         // Shield regeneration logic
         if (shieldRechargeCooldown > 0f) {
@@ -347,93 +260,8 @@ class RaptorShip(
     }
 
     companion object {
-        // 18x22 Retro Jet Sprites
-        val SPRITE_NEUTRAL = PixelSprite.fromAscii(
-            listOf(
-                "........##........",
-                ".......#..#.......",
-                ".......#..#.......",
-                "......#....#......",
-                "......#....#......",
-                ".....#..##..#.....",
-                "....#..#..#..#....",
-                "...#...#..#...#...",
-                "..#....#..#....#..",
-                "..#...#....#...#..",
-                ".#....#....#....#.",
-                "#.....#....#.....#",
-                "#....#......#....#",
-                "#....#..##..#....#",
-                "##..#..#..#..#..##",
-                ".#..#..#..#..#..#.",
-                "..##...####...##..",
-                ".......####.......",
-                ".......#..#.......",
-                ".......#..#.......",
-                "........##........",
-                "........##........"
-            ),
-            mapOf(
-                '.' to 0x00000000,
-                '#' to 0xFF37474F.toInt(), // Dark hull metal
-                ' ' to 0x00000000
-            )
-        )
-
-        val SPRITE_BANK_LEFT = PixelSprite.fromAscii(
-            listOf(
-                ".......##.........",
-                "......#..#........",
-                "......#..#........",
-                ".....#....#.......",
-                ".....#....#.......",
-                "....#..##..#......",
-                "...#..#..#..#.....",
-                "..#...#..#...#....",
-                ".#....#..#....#...",
-                ".#...#....#...#...",
-                "#....#....#....#..",
-                "#....#....#.....#.",
-                "#...#......#....#.",
-                "#...#..##..#....#.",
-                "##.#..#..#..#..##.",
-                ".#.#..#..#..#..#..",
-                ".##...####...##...",
-                "......####........",
-                "......#..#........",
-                "......#..#........",
-                ".......##.........",
-                ".......##........."
-            ),
-            mapOf('.' to 0x00000000, '#' to 0xFF455A64.toInt())
-        )
-
-        val SPRITE_BANK_RIGHT = PixelSprite.fromAscii(
-            listOf(
-                ".........##.......",
-                "........#..#......",
-                "........#..#......",
-                ".......#....#.....",
-                ".......#....#.....",
-                "......#..##..#....",
-                ".....#..#..#..#...",
-                "....#...#..#...#..",
-                "...#....#..#....#.",
-                "...#...#....#...#.",
-                "..#....#....#....#",
-                ".#.....#....#....#",
-                ".#....#......#...#",
-                ".#....#..##..#...#",
-                ".##..#..#..#..#.##",
-                "..#..#..#..#..#.#.",
-                "...##...####...##.",
-                "........####......",
-                "........#..#......",
-                "........#..#......",
-                ".........##.......",
-                ".........##......."
-            ),
-            mapOf('.' to 0x00000000, '#' to 0xFF455A64.toInt())
-        )
+        val SPRITE_NEUTRAL get() = RaptorShipSprites.SPRITE_NEUTRAL
+        val SPRITE_BANK_LEFT get() = RaptorShipSprites.SPRITE_BANK_LEFT
+        val SPRITE_BANK_RIGHT get() = RaptorShipSprites.SPRITE_BANK_RIGHT
     }
 }

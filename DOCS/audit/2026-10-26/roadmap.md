@@ -29,18 +29,18 @@ To advance the roadmap step-by-step in subsequent chat sessions, use the standar
 
 ## Priority 2: Architecture & Modularity Improvements
 
-- [ ] **Task 2.1: Modularize `RoadmapScreen.kt` (489 lines)**
+- [x] **Task 2.1: Modularize `RoadmapScreen.kt` (489 lines)**
   - **Target File(s)**: `app/src/main/java/com/example/menu/ui/RoadmapScreen.kt`, `app/src/main/java/com/example/menu/ui/RoadmapComponents.kt`
   - **Action**: Extract `GamesRoadmapTab`, `CapabilitiesMatrixTab`, and `LogAndDocsTab` into `RoadmapComponents.kt`, keeping `RoadmapScreen.kt` focused on scaffold orchestration (< 150 lines).
   - **Rationale**: Preemptively prevents `RoadmapScreen.kt` from breaching the 500-line Rule 2 ceiling as new capabilities and audit logs are added.
 
-- [ ] **Task 2.2: Extract Audio Preset Catalog from `RetroAudioSynthesizer.kt` (487 lines)**
+- [x] **Task 2.2: Extract Audio Preset Catalog from `RetroAudioSynthesizer.kt` (487 lines)**
   - **Target File(s)**: `pixie-android/src/main/kotlin/com/pixie/android/audio/RetroAudioSynthesizer.kt`, `pixie-android/src/main/kotlin/com/pixie/android/audio/RetroAudioPresets.kt`
   - **Action**: Separate audio frequency waveforms, envelope decay constants, and `AudioEvent` sound generation lookup tables from the low-level PCM audio synthesis engine.
   - **Rationale**: Brings `RetroAudioSynthesizer.kt` well under 350 lines, cleanly separating DSP audio synthesis from sound effect definitions.
 
-- [ ] **Task 2.3: Decompose `DinoPauseDialog.kt` Settings Blocks (477 lines)**
-  - **Target File(s)**: `app/src/main/java/com/example/dinorun/ui/DinoPauseDialog.kt`
+- [x] **Task 2.3: Decompose `DinoPauseDialog.kt` Settings Blocks (477 lines)**
+  - **Target File(s)**: `app/src/main/java/com/example/dinorun/ui/DinoPauseDialog.kt`, `app/src/main/java/com/example/dinorun/ui/DinoPauseComponents.kt`
   - **Action**: Extract the inlined pixel-gap selector, audio/haptic toggles, and world theme selector into focused sub-composables under 40 lines.
   - **Rationale**: Adheres to Rule 3 (sub-composable extraction, functions < 50 lines) and brings the file under 350 lines.
 
@@ -48,12 +48,12 @@ To advance the roadmap step-by-step in subsequent chat sessions, use the standar
 
 ## Priority 3: API Ergonomics & Reusability Enhancements
 
-- [ ] **Task 3.1: Streamline `RaptorShip.kt` Physics & Firing Subsystems (439 lines)**
-  - **Target File(s)**: `app/src/main/java/com/example/raptor/entities/RaptorShip.kt`
-  - **Action**: Delegate projectile salvo math and missile angle calculations to the engine's `WeaponSystem` or dedicated trajectory helper, keeping `RaptorShip` focused on ship state and rendering (< 250 lines).
+- [x] **Task 3.1: Streamline `RaptorShip.kt` Physics & Firing Subsystems (439 lines)**
+  - **Target File(s)**: `app/src/main/java/com/example/raptor/entities/RaptorShip.kt`, `app/src/main/java/com/example/raptor/entities/RaptorWeaponController.kt`, `app/src/main/java/com/example/raptor/entities/RaptorShipSprites.kt`
+  - **Action**: Delegate projectile salvo math and missile angle calculations to `RaptorWeaponController` and sprite matrices to `RaptorShipSprites`, keeping `RaptorShip` focused on ship state and rendering (< 250 lines).
   - **Rationale**: Enforces separation of concerns and reduces cognitive load in entity models.
 
-- [ ] **Task 3.2: Extract Arkanoid Powerup Catalog from `ArkanoidGameCoordinator.kt` (470 lines)**
+- [x] **Task 3.2: Extract Arkanoid Powerup Catalog from `ArkanoidGameCoordinator.kt` (470 lines)**
   - **Target File(s)**: `app/src/main/java/com/example/arkanoid/ArkanoidGameCoordinator.kt`, `app/src/main/java/com/example/arkanoid/world/ArkanoidPowerupCatalog.kt`
   - **Action**: Extract capsule drop probability tables, effect duration timers, and powerup assignment logic into `ArkanoidPowerupCatalog.kt`.
   - **Rationale**: Prevents `ArkanoidGameCoordinator.kt` from crossing the 500-line limit and enhances drop table configurability.

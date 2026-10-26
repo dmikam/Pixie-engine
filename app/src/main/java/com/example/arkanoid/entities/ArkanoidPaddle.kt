@@ -49,11 +49,11 @@ class ArkanoidPaddle(
         when (type) {
             PowerUpType.WIDE_PADDLE -> {
                 isWide = true
-                wideTimer = 18f // 18 seconds
+                wideTimer = com.example.arkanoid.world.ArkanoidPowerupCatalog.DURATION_WIDE_PADDLE
             }
             PowerUpType.LASER -> {
                 isLaser = true
-                laserTimer = 15f
+                laserTimer = com.example.arkanoid.world.ArkanoidPowerupCatalog.DURATION_LASER
             }
             PowerUpType.SAFETY_BARRIER -> {
                 hasBarrier = true

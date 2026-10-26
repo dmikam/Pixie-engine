@@ -42,14 +42,9 @@ class PowerCapsule(
         val box = boundingBox
         val screenPos = camera.worldToScreen(Vec2(box.left, box.top))
 
-        val (capsuleColor, glyphColor) = when (type) {
-            PowerUpType.LASER -> Pair(0xFFFF1744.toInt(), 0xFFFFFFFF.toInt())
-            PowerUpType.WIDE_PADDLE -> Pair(0xFF00E5FF.toInt(), 0xFFFFFFFF.toInt())
-            PowerUpType.MULTI_BALL -> Pair(0xFF00E676.toInt(), 0xFFFFFFFF.toInt())
-            PowerUpType.PLASMA_BALL -> Pair(0xFFFF9100.toInt(), 0xFFFFFFFF.toInt())
-            PowerUpType.SLOW_BALL -> Pair(0xFF2979FF.toInt(), 0xFFFFFFFF.toInt())
-            PowerUpType.SAFETY_BARRIER -> Pair(0xFFD500F9.toInt(), 0xFFFFFFFF.toInt())
-        }
+        val def = com.example.arkanoid.world.ArkanoidPowerupCatalog.getDefinition(type)
+        val capsuleColor = def.primaryColor
+        val glyphColor = def.glyphColor
 
         // Pill shape: central body + beveled cap ends
         batch.drawPixelRect(screenPos.x, screenPos.y, box.width, box.height, capsuleColor)
@@ -57,14 +52,6 @@ class PowerCapsule(
         batch.drawPixelRect(screenPos.x, screenPos.y + box.height - 1f, box.width, 1f, 0x88000000.toInt())
 
         // Center identifier pip
-        val centerPip = when (type) {
-            PowerUpType.LASER -> "L"
-            PowerUpType.WIDE_PADDLE -> "W"
-            PowerUpType.MULTI_BALL -> "M"
-            PowerUpType.PLASMA_BALL -> "P"
-            PowerUpType.SLOW_BALL -> "S"
-            PowerUpType.SAFETY_BARRIER -> "B"
-        }
-        batch.drawText(centerPip, screenPos.x + 3f, screenPos.y + 1f, glyphColor, sizePx = 6f)
+        batch.drawText(def.glyph, screenPos.x + 3f, screenPos.y + 1f, glyphColor, sizePx = 6f)
     }
 }

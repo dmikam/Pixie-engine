@@ -40,14 +40,7 @@ object ArkanoidLevelCatalog {
             val color = rowColors[r]
             for (c in 0 until cols) {
                 val isArmored = (r == 4 && (c == 0 || c == 1 || c == 5 || c == 6 || c == 10 || c == 11))
-                val powerUp = when {
-                    r == 0 && c == 5 -> PowerUpType.LASER
-                    r == 1 && c == 2 -> PowerUpType.WIDE_PADDLE
-                    r == 2 && c == 9 -> PowerUpType.MULTI_BALL
-                    r == 3 && c == 6 -> PowerUpType.SLOW_BALL
-                    r == 4 && c == 6 -> PowerUpType.SAFETY_BARRIER
-                    else -> null
-                }
+                val powerUp = ArkanoidPowerupCatalog.assignPowerupForLayout(levelNumber = 1, row = r, col = c)
 
                 if (isArmored) {
                     list.add(
@@ -100,13 +93,7 @@ object ArkanoidLevelCatalog {
 
                 val isExplosive = (r == 3 && (c == 5 || c == 6))
                 val isArmored = (r == 5 && (c == 2 || c == 9))
-                val powerUp = when {
-                    r == 1 && c == 5 -> PowerUpType.PLASMA_BALL
-                    r == 2 && c == 4 -> PowerUpType.WIDE_PADDLE
-                    r == 4 && c == 7 -> PowerUpType.LASER
-                    r == 4 && c == 4 -> PowerUpType.MULTI_BALL
-                    else -> null
-                }
+                val powerUp = ArkanoidPowerupCatalog.assignPowerupForLayout(levelNumber = 2, row = r, col = c)
 
                 val cell = when {
                     isExplosive -> BrickCell(
@@ -158,13 +145,7 @@ object ArkanoidLevelCatalog {
                 val isExplosive = (r == 1 && (c == 2 || c == 9)) || (r == 5 && (c == 3 || c == 8))
                 val isArmored = (r == 0) || (r == 3 && (c == 0 || c == 11))
 
-                val powerUp = when {
-                    r == 0 && c == 5 -> PowerUpType.SAFETY_BARRIER
-                    r == 3 && c == 5 -> PowerUpType.PLASMA_BALL
-                    r == 5 && c == 2 -> PowerUpType.MULTI_BALL
-                    r == 6 && c == 6 -> PowerUpType.LASER
-                    else -> null
-                }
+                val powerUp = ArkanoidPowerupCatalog.assignPowerupForLayout(levelNumber = 3, row = r, col = c)
 
                 val cell = when {
                     isGoldObstacle -> BrickCell(

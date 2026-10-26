@@ -5,22 +5,15 @@ import java.io.BufferedOutputStream
 import java.io.File
 import java.io.FileOutputStream
 import java.io.OutputStream
-import kotlin.math.PI
-import kotlin.math.asin
-import kotlin.math.exp
-import kotlin.math.sin
-import kotlin.random.Random
 
 /**
  * Pure Kotlin procedural retro audio synthesizer for Pixie Engine.
  *
  * Generates 16-bit 22050Hz mono WAV audio files entirely offline and in-memory,
- * replicating authentic vintage 8-bit/16-bit arcade sound effects:
- * - Square wave laser chirps and sweeps
- * - Filtered noise bursts and thunderous low-frequency explosions
- * - Metallic buzzes, deflections, and shield impacts
- * - Multi-tone ascending victory arpeggios and power-up chimes
- * - Responsive UI clicks and retro jump/duck sound cues
+ * replicating authentic vintage 8-bit/16-bit arcade sound effects.
+ *
+ * Sound design waveforms, envelopes, and frequency definitions are encapsulated
+ * within [RetroAudioPresets].
  *
  * Buffer Allocation Optimization:
  * Uses pre-allocated static synthesis, header, and streaming buffers to avoid
@@ -55,7 +48,7 @@ object RetroAudioSynthesizer {
             val file = File(targetDir, "${event.name.lowercase()}.wav")
             // Generate if file doesn't exist or is empty/corrupt
             if (!file.exists() || file.length() < 100) {
-                val sampleCount = synthesizeEvent(event, sampleBuffer)
+                val sampleCount = RetroAudioPresets.synthesizeEvent(event, sampleBuffer, SAMPLE_RATE)
                 BufferedOutputStream(FileOutputStream(file), STREAM_CHUNK_SIZE * 2).use { stream ->
                     writeWavToStream(stream, sampleBuffer, sampleCount, SAMPLE_RATE)
                 }
@@ -71,7 +64,7 @@ object RetroAudioSynthesizer {
      * @return The number of audio samples written into [out].
      */
     fun synthesizeToBuffer(event: AudioEvent, out: ShortArray): Int {
-        return synthesizeEvent(event, out)
+        return RetroAudioPresets.synthesizeEvent(event, out, SAMPLE_RATE)
     }
 
     /**
@@ -80,327 +73,8 @@ object RetroAudioSynthesizer {
      */
     @Synchronized
     fun synthesize(event: AudioEvent): ShortArray {
-        val count = synthesizeEvent(event, sampleBuffer)
+        val count = RetroAudioPresets.synthesizeEvent(event, sampleBuffer, SAMPLE_RATE)
         return sampleBuffer.copyOf(count)
-    }
-
-    private fun synthesizeEvent(event: AudioEvent, out: ShortArray): Int {
-        return when (event) {
-            AudioEvent.FIRE_PRIMARY -> synthLaserChirp(out, duration = 0.09f, startFreq = 950f, endFreq = 220f)
-            AudioEvent.FIRE_MISSILE -> synthRocketWhoosh(out, duration = 0.22f, startFreq = 180f, endFreq = 65f)
-            AudioEvent.EXPLOSION_SMALL -> synthNoiseBlast(out, duration = 0.18f, decayRate = 22f, lowPass = true)
-            AudioEvent.EXPLOSION_LARGE -> synthHeavyExplosion(out, duration = 0.45f)
-            AudioEvent.HIT -> synthHitCrunch(out, duration = 0.12f)
-            AudioEvent.SHIELD_HIT -> synthShieldDeflect(out, duration = 0.14f)
-            AudioEvent.POWERUP_PICKUP -> synthArpeggio(
-                out = out,
-                frequencies = floatArrayOf(523.25f, 659.25f, 783.99f, 1046.50f),
-                noteDuration = 0.055f
-            )
-            AudioEvent.COLLECT -> synthArpeggio(
-                out = out,
-                frequencies = floatArrayOf(659.25f, 987.77f),
-                noteDuration = 0.07f
-            )
-            AudioEvent.JUMP -> synthPitchSlide(out, duration = 0.15f, startFreq = 160f, endFreq = 640f, isSquare = true)
-            AudioEvent.DUCK -> synthPitchSlide(out, duration = 0.11f, startFreq = 320f, endFreq = 130f, isSquare = false)
-            AudioEvent.SCORE_MILESTONE -> synthFanfare(out)
-            AudioEvent.GAME_OVER -> synthGameOverTune(out)
-            AudioEvent.BUTTON_CLICK -> synthButtonClick(out, duration = 0.025f)
-            AudioEvent.DAY_NIGHT_SHIFT -> synthAmbientSweep(out, duration = 0.35f)
-        }
-    }
-
-    /**
-     * Classic rapid laser chirp with frequency drop and square wave harmonics.
-     */
-    private fun synthLaserChirp(out: ShortArray, duration: Float, startFreq: Float, endFreq: Float): Int {
-        val count = (duration * SAMPLE_RATE).toInt().coerceAtMost(out.size)
-        val twoPiDt = (2.0 * PI) / SAMPLE_RATE
-        var phase = 0.0
-
-        for (i in 0 until count) {
-            val progress = i.toDouble() / count
-            val freq = startFreq + (endFreq - startFreq) * (progress * progress)
-            phase += freq * twoPiDt
-
-            val raw = if (sin(phase) >= 0.0) 0.8 else -0.8
-            val envelope = 1.0 - progress
-            val sampleVal = (raw * envelope * 24000.0).toInt().coerceIn(-32767, 32767)
-            out[i] = sampleVal.toShort()
-        }
-        return count
-    }
-
-    /**
-     * Rocket whoosh with low frequency tone + filtered exhaust noise.
-     */
-    private fun synthRocketWhoosh(out: ShortArray, duration: Float, startFreq: Float, endFreq: Float): Int {
-        val count = (duration * SAMPLE_RATE).toInt().coerceAtMost(out.size)
-        val twoPiDt = (2.0 * PI) / SAMPLE_RATE
-        var phase = 0.0
-        val rng = Random(1234)
-
-        for (i in 0 until count) {
-            val progress = i.toDouble() / count
-            val freq = startFreq + (endFreq - startFreq) * progress
-            phase += freq * twoPiDt
-
-            val tone = sin(phase) * 0.6
-            val noise = (rng.nextDouble() * 2.0 - 1.0) * 0.4
-            val envelope = sin(progress * PI)
-            val sampleVal = ((tone + noise) * envelope * 22000.0).toInt().coerceIn(-32767, 32767)
-            out[i] = sampleVal.toShort()
-        }
-        return count
-    }
-
-    /**
-     * Exponential decay noise blast.
-     */
-    private fun synthNoiseBlast(out: ShortArray, duration: Float, decayRate: Float, lowPass: Boolean): Int {
-        val count = (duration * SAMPLE_RATE).toInt().coerceAtMost(out.size)
-        val invSampleRate = 1.0 / SAMPLE_RATE
-        val rng = Random(5678)
-        var prevNoise = 0.0
-
-        for (i in 0 until count) {
-            val t = i * invSampleRate
-            val rawNoise = rng.nextDouble() * 2.0 - 1.0
-            val noise = if (lowPass) {
-                prevNoise = prevNoise * 0.4 + rawNoise * 0.6
-                prevNoise
-            } else rawNoise
-
-            val envelope = exp(-t * decayRate)
-            val sampleVal = (noise * envelope * 26000.0).toInt().coerceIn(-32767, 32767)
-            out[i] = sampleVal.toShort()
-        }
-        return count
-    }
-
-    /**
-     * Deep thundering explosion with sub-bass punch and distorted crunch.
-     */
-    private fun synthHeavyExplosion(out: ShortArray, duration: Float): Int {
-        val count = (duration * SAMPLE_RATE).toInt().coerceAtMost(out.size)
-        val invSampleRate = 1.0 / SAMPLE_RATE
-        val twoPiDt = (2.0 * PI) / SAMPLE_RATE
-        val rng = Random(9999)
-        var lowNoise = 0.0
-        var phase = 0.0
-
-        for (i in 0 until count) {
-            val t = i * invSampleRate
-            val progress = i.toDouble() / count
-
-            val raw = rng.nextDouble() * 2.0 - 1.0
-            lowNoise = lowNoise * 0.85 + raw * 0.15
-
-            val freq = 85.0 - (50.0 * progress)
-            phase += freq * twoPiDt
-            val bass = sin(phase) * 0.55
-
-            val combined = (lowNoise * 0.65 + bass)
-            val envelope = exp(-t * 9.0)
-            val sampleVal = (combined * envelope * 28000.0).toInt().coerceIn(-32767, 32767)
-            out[i] = sampleVal.toShort()
-        }
-        return count
-    }
-
-    /**
-     * Metallic hit crunch with short noise burst and decaying saw tone.
-     */
-    private fun synthHitCrunch(out: ShortArray, duration: Float): Int {
-        val count = (duration * SAMPLE_RATE).toInt().coerceAtMost(out.size)
-        val invSampleRate = 1.0 / SAMPLE_RATE
-        val twoPiDt = (2.0 * PI) / SAMPLE_RATE
-        val twoPiInv = 1.0 / (2.0 * PI)
-        val rng = Random(42)
-        var phase = 0.0
-
-        for (i in 0 until count) {
-            val t = i * invSampleRate
-            val progress = i.toDouble() / count
-
-            val freq = 140.0 - (60.0 * progress)
-            phase += freq * twoPiDt
-            val saw = ((phase * twoPiInv) % 1.0) * 2.0 - 1.0
-            val noise = (rng.nextDouble() * 2.0 - 1.0) * 0.6
-
-            val envelope = exp(-t * 30.0)
-            val sampleVal = ((saw * 0.5 + noise * 0.5) * envelope * 25000.0).toInt().coerceIn(-32767, 32767)
-            out[i] = sampleVal.toShort()
-        }
-        return count
-    }
-
-    /**
-     * Shield deflection: high-frequency modulated electric zap.
-     */
-    private fun synthShieldDeflect(out: ShortArray, duration: Float): Int {
-        val count = (duration * SAMPLE_RATE).toInt().coerceAtMost(out.size)
-        val invSampleRate = 1.0 / SAMPLE_RATE
-        val twoPiDt = (2.0 * PI) / SAMPLE_RATE
-        val modStep = 85.0 * twoPiDt
-        var carrierPhase = 0.0
-        var modPhase = 0.0
-
-        for (i in 0 until count) {
-            val t = i * invSampleRate
-            modPhase += modStep
-            val mod = sin(modPhase) * 250.0
-
-            val carrierFreq = (1150.0 + mod - (t * 2000.0)).coerceAtLeast(100.0)
-            carrierPhase += carrierFreq * twoPiDt
-
-            val wave = sin(carrierPhase)
-            val envelope = exp(-t * 24.0)
-            val sampleVal = (wave * envelope * 24000.0).toInt().coerceIn(-32767, 32767)
-            out[i] = sampleVal.toShort()
-        }
-        return count
-    }
-
-    /**
-     * Ascending harmonic arpeggio (powerups, collectibles).
-     */
-    private fun synthArpeggio(out: ShortArray, frequencies: FloatArray, noteDuration: Float): Int {
-        val totalDuration = frequencies.size * noteDuration
-        val count = (totalDuration * SAMPLE_RATE).toInt().coerceAtMost(out.size)
-        val noteSamples = (noteDuration * SAMPLE_RATE).toInt().coerceAtLeast(1)
-        val twoPiDt = (2.0 * PI) / SAMPLE_RATE
-        var phase = 0.0
-
-        for (i in 0 until count) {
-            val noteIdx = (i / noteSamples).coerceIn(0, frequencies.size - 1)
-            val noteSampleIdx = i % noteSamples
-            val noteProgress = noteSampleIdx.toDouble() / noteSamples
-
-            val freq = frequencies[noteIdx].toDouble()
-            phase += freq * twoPiDt
-
-            val tone = sin(phase) * 0.75 + sin(phase * 2.0) * 0.25
-            val envelope = 1.0 - noteProgress * 0.6
-            val sampleVal = (tone * envelope * 22000.0).toInt().coerceIn(-32767, 32767)
-            out[i] = sampleVal.toShort()
-        }
-        return count
-    }
-
-    /**
-     * Pitch slide for Jump / Duck.
-     */
-    private fun synthPitchSlide(
-        out: ShortArray,
-        duration: Float,
-        startFreq: Float,
-        endFreq: Float,
-        isSquare: Boolean
-    ): Int {
-        val count = (duration * SAMPLE_RATE).toInt().coerceAtMost(out.size)
-        val twoPiDt = (2.0 * PI) / SAMPLE_RATE
-        var phase = 0.0
-
-        for (i in 0 until count) {
-            val progress = i.toDouble() / count
-            val freq = startFreq + (endFreq - startFreq) * progress
-            phase += freq * twoPiDt
-
-            val wave = if (isSquare) {
-                if (sin(phase) >= 0.0) 0.75 else -0.75
-            } else {
-                sin(phase)
-            }
-            val envelope = 1.0 - progress * 0.5
-            val sampleVal = (wave * envelope * 22000.0).toInt().coerceIn(-32767, 32767)
-            out[i] = sampleVal.toShort()
-        }
-        return count
-    }
-
-    /**
-     * Triumphant 4-chord fanfare for milestone.
-     */
-    private fun synthFanfare(out: ShortArray): Int {
-        val notes = floatArrayOf(523.25f, 659.25f, 783.99f, 1046.50f)
-        return synthArpeggio(out, notes, noteDuration = 0.085f)
-    }
-
-    /**
-     * Descending minor game over melody.
-     */
-    private fun synthGameOverTune(out: ShortArray): Int {
-        val notes = floatArrayOf(440f, 392f, 349.23f, 261.63f)
-        val noteDuration = 0.11f
-        val count = (notes.size * noteDuration * SAMPLE_RATE).toInt().coerceAtMost(out.size)
-        val noteSamples = (noteDuration * SAMPLE_RATE).toInt().coerceAtLeast(1)
-        val twoPiDt = (2.0 * PI) / SAMPLE_RATE
-        val invPi = 1.0 / PI
-        var phase = 0.0
-
-        for (i in 0 until count) {
-            val noteIdx = (i / noteSamples).coerceIn(0, notes.size - 1)
-            val noteSampleIdx = i % noteSamples
-            val noteProgress = noteSampleIdx.toDouble() / noteSamples
-
-            val freq = notes[noteIdx].toDouble()
-            phase += freq * twoPiDt
-
-            val tri = (2.0 * invPi) * asin(sin(phase))
-            val envelope = 1.0 - noteProgress * 0.7
-            val sampleVal = (tri * envelope * 24000.0).toInt().coerceIn(-32767, 32767)
-            out[i] = sampleVal.toShort()
-        }
-        return count
-    }
-
-    /**
-     * Ultra snappy UI button click.
-     */
-    private fun synthButtonClick(out: ShortArray, duration: Float): Int {
-        val count = (duration * SAMPLE_RATE).toInt().coerceAtMost(out.size)
-        val invSampleRate = 1.0 / SAMPLE_RATE
-        val twoPiDt = (2.0 * PI) / SAMPLE_RATE
-        val step = 1400.0 * twoPiDt
-        var phase = 0.0
-
-        for (i in 0 until count) {
-            val t = i * invSampleRate
-            phase += step
-            val wave = sin(phase)
-            val envelope = exp(-t * 120.0)
-            val sampleVal = (wave * envelope * 20000.0).toInt().coerceIn(-32767, 32767)
-            out[i] = sampleVal.toShort()
-        }
-        return count
-    }
-
-    /**
-     * Ethereal sweep for Day/Night shift.
-     */
-    private fun synthAmbientSweep(out: ShortArray, duration: Float): Int {
-        val count = (duration * SAMPLE_RATE).toInt().coerceAtMost(out.size)
-        val twoPiDt = (2.0 * PI) / SAMPLE_RATE
-        var phase1 = 0.0
-        var phase2 = 0.0
-
-        for (i in 0 until count) {
-            val progress = i.toDouble() / count
-            val sinProg = sin(progress * PI)
-            val freq1 = 440.0 + sinProg * 120.0
-            val freq2 = 880.0 + sinProg * 240.0
-
-            phase1 += freq1 * twoPiDt
-            phase2 += freq2 * twoPiDt
-
-            val wave = sin(phase1) * 0.5 + sin(phase2) * 0.3
-            val envelope = sinProg
-            val sampleVal = (wave * envelope * 20000.0).toInt().coerceIn(-32767, 32767)
-            out[i] = sampleVal.toShort()
-        }
-        return count
     }
 
     /**

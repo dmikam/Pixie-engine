@@ -5,6 +5,7 @@ import com.example.arkanoid.entities.ArkanoidPaddle
 import com.example.arkanoid.entities.EnergyBall
 import com.example.arkanoid.entities.PowerCapsule
 import com.example.arkanoid.world.ArkanoidLevelCatalog
+import com.example.arkanoid.world.ArkanoidPowerupCatalog
 import com.pixie.engine.core.PixieEngine
 import com.pixie.engine.core.camera.GameViewMode
 import com.pixie.engine.core.camera.PixieCamera
@@ -376,39 +377,15 @@ class ArkanoidGameCoordinator(
     private fun applyPowerUp(type: PowerUpType) {
         audioPort.playSound(AudioEvent.POWERUP_PICKUP)
         hapticPort.trigger(HapticFeedbackType.MEDIUM)
-        score += 500
+        score += ArkanoidPowerupCatalog.getBonusScore(type)
         highScore = max(highScore, score)
 
-        when (type) {
-            PowerUpType.WIDE_PADDLE,
-            PowerUpType.LASER,
-            PowerUpType.SAFETY_BARRIER -> {
-                paddle.applyPowerUp(type)
-            }
-            PowerUpType.MULTI_BALL -> {
-                // Split active balls into 3
-                val newBalls = mutableListOf<EnergyBall>()
-                for (b in balls) {
-                    if (b.isAlive && !b.isDocked) {
-                        newBalls.add(EnergyBall(b.position, Vec2(-b.velocity.x, b.velocity.y), b.radius).apply {
-                            isDocked = false
-                            speed = b.speed
-                        })
-                        newBalls.add(EnergyBall(b.position, Vec2(b.velocity.x * 0.7f, -kotlin.math.abs(b.velocity.y)), b.radius).apply {
-                            isDocked = false
-                            speed = b.speed
-                        })
-                    }
-                }
-                balls.addAll(newBalls)
-            }
-            PowerUpType.PLASMA_BALL -> {
-                for (b in balls) b.makePlasma(duration = 9f)
-            }
-            PowerUpType.SLOW_BALL -> {
-                for (b in balls) b.speed = baseBallSpeed
-            }
-        }
+        ArkanoidPowerupCatalog.applyEffect(
+            type = type,
+            paddle = paddle,
+            balls = balls,
+            baseBallSpeed = baseBallSpeed
+        )
         updateUiState()
     }
 
@@ -442,13 +419,7 @@ class ArkanoidGameCoordinator(
 
     private fun updateUiState() {
         val level = ArkanoidLevelCatalog.getLevel(currentLevelIndex)
-        val activePill = when {
-            paddle.isLaser -> "LASER CANNON (${paddle.laserTimer.toInt()}s)"
-            paddle.isWide -> "WIDE PADDLE (${paddle.wideTimer.toInt()}s)"
-            paddle.hasBarrier -> "SAFETY BARRIER ACTIVE"
-            balls.any { it.isPlasma } -> "PLASMA SPHERE"
-            else -> null
-        }
+        val activePill = ArkanoidPowerupCatalog.formatActiveStatus(paddle, balls)
 
         _uiState.value = ArkanoidUiState(
             score = score,
