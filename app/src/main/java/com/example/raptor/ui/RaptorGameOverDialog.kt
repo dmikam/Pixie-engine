@@ -1,0 +1,164 @@
+package com.example.raptor.ui
+
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.MonetizationOn
+import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.Icon
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.Dialog
+import com.pixie.engine.core.context.DifficultyPreset
+
+/**
+ * Game Over Dialog when Raptor Interceptor is destroyed.
+ */
+@Composable
+fun RaptorGameOverDialog(
+    score: Long,
+    levelName: String,
+    difficulty: DifficultyPreset,
+    onRestart: () -> Unit,
+    onGoToHangar: () -> Unit,
+    onExit: () -> Unit
+) {
+    Dialog(onDismissRequest = {}) {
+        Card(
+            shape = RoundedCornerShape(16.dp),
+            colors = CardDefaults.cardColors(containerColor = Color(0xFF1A1215)),
+            border = BorderStroke(2.dp, Color(0xFFFF1744)),
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp)
+        ) {
+            Column(
+                modifier = Modifier.padding(24.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Text(
+                    text = "INTERCEPTOR DESTROYED",
+                    color = Color(0xFFFF1744),
+                    fontSize = 18.sp,
+                    fontWeight = FontWeight.Black,
+                    fontFamily = FontFamily.Monospace
+                )
+                Spacer(modifier = Modifier.height(6.dp))
+                Text(
+                    text = levelName,
+                    color = Color(0xFFB0BEC5),
+                    fontSize = 12.sp
+                )
+
+                Spacer(modifier = Modifier.height(16.dp))
+                GameOverScoreCard(score = score, difficulty = difficulty)
+
+                Spacer(modifier = Modifier.height(20.dp))
+                GameOverActionButtons(
+                    onRestart = onRestart,
+                    onGoToHangar = onGoToHangar,
+                    onExit = onExit
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun GameOverScoreCard(
+    score: Long,
+    difficulty: DifficultyPreset
+) {
+    Surface(
+        shape = RoundedCornerShape(8.dp),
+        color = Color(0xFF0F0A0C),
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Column(
+            modifier = Modifier.padding(14.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Text("FINAL SCORE", color = Color(0xFF78909C), fontSize = 11.sp)
+            Text(
+                text = "$score",
+                color = Color(0xFFFFD54F),
+                fontSize = 28.sp,
+                fontWeight = FontWeight.Black,
+                fontFamily = FontFamily.Monospace
+            )
+            Text(
+                text = "DIFFICULTY: ${difficulty.name} (${difficulty.difficultyValue})",
+                color = Color(0xFF00E5FF),
+                fontSize = 10.sp,
+                fontFamily = FontFamily.Monospace
+            )
+        }
+    }
+}
+
+@Composable
+private fun GameOverActionButtons(
+    onRestart: () -> Unit,
+    onGoToHangar: () -> Unit,
+    onExit: () -> Unit
+) {
+    Button(
+        onClick = onGoToHangar,
+        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF1565C0)),
+        shape = RoundedCornerShape(8.dp),
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(44.dp)
+            .testTag("game_over_hangar_button")
+    ) {
+        Icon(Icons.Filled.MonetizationOn, contentDescription = null, tint = Color(0xFFFFD54F))
+        Spacer(modifier = Modifier.width(6.dp))
+        Text("RETURN TO BASE HANGAR & SHOP", fontWeight = FontWeight.Bold)
+    }
+
+    Spacer(modifier = Modifier.height(8.dp))
+
+    OutlinedButton(
+        onClick = onRestart,
+        shape = RoundedCornerShape(8.dp),
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(44.dp)
+            .testTag("game_over_retry_button")
+    ) {
+        Icon(Icons.Filled.Refresh, contentDescription = null)
+        Spacer(modifier = Modifier.width(6.dp))
+        Text("DEPLOY REPLACEMENT INTERCEPTOR")
+    }
+
+    Spacer(modifier = Modifier.height(8.dp))
+
+    OutlinedButton(
+        onClick = onExit,
+        shape = RoundedCornerShape(8.dp),
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Text("RETURN TO ARCADE HUB")
+    }
+}

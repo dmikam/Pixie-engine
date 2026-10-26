@@ -243,7 +243,7 @@ fun RaptorGameScreen(
             )
         }
         .overlays {
-            RaptorCombatModals(
+            RaptorModals(
                 isPaused = isPaused,
                 isGameOver = isGameOver,
                 isVictory = isVictory,
@@ -252,9 +252,7 @@ fun RaptorGameScreen(
                 isHapticEnabled = isHapticEnabled,
                 currentLevelIndex = currentLevelIndex,
                 currentScore = currentScore,
-                coordinator = coordinator,
-                audioAdapter = audioAdapter,
-                hapticAdapter = hapticAdapter,
+                levelName = coordinator.currentLevel.name,
                 onResume = {
                     if (isSoundEnabled) audioAdapter.playSound(AudioEvent.BUTTON_CLICK)
                     isPaused = false
@@ -308,72 +306,5 @@ fun RaptorGameScreen(
             )
         }
         .Render(modifier = modifier)
-}
-
-/**
- * Modals and alert dialog overlays for active Raptor combat sessions.
- */
-@Composable
-private fun RaptorCombatModals(
-    isPaused: Boolean,
-    isGameOver: Boolean,
-    isVictory: Boolean,
-    selectedDifficulty: DifficultyPreset,
-    isSoundEnabled: Boolean,
-    isHapticEnabled: Boolean,
-    currentLevelIndex: Int,
-    currentScore: Long,
-    coordinator: RaptorGameCoordinator,
-    audioAdapter: AndroidSoundPoolAudioAdapter,
-    hapticAdapter: AndroidHapticAdapter,
-    onResume: () -> Unit,
-    onRestart: () -> Unit,
-    onGoToHangar: () -> Unit,
-    onNextLevel: () -> Unit,
-    onExitToTitle: () -> Unit,
-    onToggleSound: (Boolean) -> Unit,
-    onToggleHaptic: (Boolean) -> Unit,
-    onSelectDifficulty: (DifficultyPreset) -> Unit,
-    onSelectLevel: (Int) -> Unit
-) {
-    if (isPaused) {
-        RaptorPauseDialog(
-            selectedDifficulty = selectedDifficulty,
-            isSoundEnabled = isSoundEnabled,
-            isHapticEnabled = isHapticEnabled,
-            currentLevel = currentLevelIndex,
-            onResume = onResume,
-            onRestart = onRestart,
-            onGoToHangar = onGoToHangar,
-            onToggleSound = onToggleSound,
-            onToggleHaptic = onToggleHaptic,
-            onSelectDifficulty = onSelectDifficulty,
-            onSelectLevel = onSelectLevel,
-            onExit = onExitToTitle
-        )
-    }
-
-    if (isGameOver) {
-        RaptorGameOverDialog(
-            score = currentScore,
-            levelName = coordinator.currentLevel.name,
-            difficulty = selectedDifficulty,
-            onRestart = onRestart,
-            onGoToHangar = onGoToHangar,
-            onExit = onExitToTitle
-        )
-    }
-
-    if (isVictory) {
-        RaptorVictoryDialog(
-            score = currentScore,
-            levelName = coordinator.currentLevel.name,
-            hasNextLevel = currentLevelIndex < 3,
-            onNextLevel = onNextLevel,
-            onGoToHangar = onGoToHangar,
-            onRestart = onRestart,
-            onExit = onExitToTitle
-        )
-    }
 }
 

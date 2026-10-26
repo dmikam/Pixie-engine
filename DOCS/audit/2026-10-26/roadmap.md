@@ -15,12 +15,12 @@ To advance the roadmap step-by-step in subsequent chat sessions, use the standar
 
 ## Priority 1: Critical Fixes & AGENTS.md Violations
 
-- [ ] **Task 1.1: Modularize `RaptorModals.kt` (679 lines) into Dedicated Dialog Files**
+- [x] **Task 1.1: Modularize `RaptorModals.kt` (679 lines) into Dedicated Dialog Files**
   - **Target File(s)**: `app/src/main/java/com/example/raptor/ui/RaptorModals.kt`, `app/src/main/java/com/example/raptor/ui/RaptorPauseDialog.kt`, `app/src/main/java/com/example/raptor/ui/RaptorGameOverDialog.kt`, `app/src/main/java/com/example/raptor/ui/RaptorVictoryDialog.kt`
   - **Action**: Extract `RaptorPauseDialog` (~340 lines), `RaptorGameOverDialog` (~130 lines), and `RaptorVictoryDialog` (~140 lines) into individual, dedicated files, mirroring the clean pattern of `dinorun` (`DinoPauseDialog.kt`, `DinoGameOverDialog.kt`, `DinoModals.kt`). Retain `RaptorModals.kt` as the lightweight overlay coordinator (< 100 lines).
   - **Rationale**: Resolves the Rule 2 violation in `RaptorModals.kt` (679 lines exceeds the 300–500 line soft limit).
 
-- [ ] **Task 1.2: Prune Orphaned / Redundant Hangar Screen Files**
+- [x] **Task 1.2: Prune Orphaned / Redundant Hangar Screen Files**
   - **Target File(s)**: `app/src/main/java/com/example/raptor/ui/RaptorHangarBaseScreen.kt` (141 lines), `app/src/main/java/com/example/raptor/ui/RaptorHangarComponents.kt` (528 lines)
   - **Action**: Remove or retire the unreferenced legacy hangar files since active game navigation routes through `RaptorBriefingScreen.kt` and `RaptorTerminalShopScreen.kt`. Verify that no broken imports or unresolved references remain in test or production source sets.
   - **Rationale**: Eliminates the Rule 2 violation in `RaptorHangarComponents.kt` (528 lines) and removes dead code that creates developer cognitive overload.
