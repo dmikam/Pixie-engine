@@ -59,7 +59,7 @@ class ArkanoidGameCoordinator(
 
     val arenaBounds = RectF(14f, 12f, 306f, 175f)
 
-    private val matrixLayer = DestructibleMatrixLayer(
+    internal val matrixLayer = DestructibleMatrixLayer(
         originX = 18f,
         originY = 22f,
         brickWidth = 22f,
@@ -68,12 +68,12 @@ class ArkanoidGameCoordinator(
     )
 
     val paddle = ArkanoidPaddle(initialX = 160f, y = 162f)
-    private val balls = mutableListOf<EnergyBall>()
-    private val capsules = mutableListOf<PowerCapsule>()
-    private val lasers = mutableListOf<ArkanoidLaser>()
+    internal val balls = mutableListOf<EnergyBall>()
+    internal val capsules = mutableListOf<PowerCapsule>()
+    internal val lasers = mutableListOf<ArkanoidLaser>()
 
-    private var targetPaddleX: Float = 160f
-    private var baseBallSpeed: Float = 135f
+    internal var targetPaddleX: Float = 160f
+    internal var baseBallSpeed: Float = 135f
 
     private var currentLevelIndex: Int = 1
     private var score: Int = 0
@@ -374,7 +374,7 @@ class ArkanoidGameCoordinator(
         }
     }
 
-    private fun applyPowerUp(type: PowerUpType) {
+    internal fun applyPowerUp(type: PowerUpType) {
         audioPort.playSound(AudioEvent.POWERUP_PICKUP)
         hapticPort.trigger(HapticFeedbackType.MEDIUM)
         score += ArkanoidPowerupCatalog.getBonusScore(type)

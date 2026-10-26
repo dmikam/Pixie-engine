@@ -62,12 +62,12 @@ To advance the roadmap step-by-step in subsequent chat sessions, use the standar
 
 ## Priority 4: Quality & Polish Items
 
-- [ ] **Task 4.1: Add Automated Robolectric Tests for Arkanoid Gameplay**
+- [x] **Task 4.1: Add Automated Robolectric Tests for Arkanoid Gameplay**
   - **Target File(s)**: `app/src/test/java/com/example/arkanoid/ArkanoidGameCoordinatorTest.kt`
   - **Action**: Implement unit and Robolectric tests validating paddle collision angle deflection, powerup activation, laser projectile firing, and level progression.
   - **Rationale**: Establishes comprehensive regression test coverage matching `RaptorGameCoordinatorTest.kt`.
 
-- [ ] **Task 4.2: Add Automated Robolectric Tests for DinoRun Gameplay**
+- [x] **Task 4.2: Add Automated Robolectric Tests for DinoRun Gameplay**
   - **Target File(s)**: `app/src/test/java/com/example/dinorun/DinoGameCoordinatorTest.kt`
   - **Action**: Implement unit and Robolectric tests validating jump physics, ground detection, color recovery pipeline integration, and obstacle collision.
   - **Rationale**: Ensures test parity across all three showcase games.
