@@ -10,15 +10,20 @@ import com.pixie.engine.core.sprite.AnimationFrame
 import com.pixie.engine.core.sprite.AnimationSequence
 import com.pixie.engine.core.sprite.PixelSprite
 
+import com.pixie.engine.core.weapon.Trajectory
+
 /**
  * Falling volcanic meteor hazard.
- * Inherits from engine core [PixieObstacle] base class to eliminate boilerplate.
+ * Inherits from engine core [PixieObstacle] base class to eliminate boilerplate
+ * and leverages engine [Trajectory.Linear] for motion calculation.
  */
 class VolcanicMeteor(
     id: String,
     val targetGroundX: Float,
     val groundY: Float,
-    val triggerDistance: Float = 180f
+    val triggerDistance: Float = 180f,
+    val speed: Float = 136f,
+    val trajectory: Trajectory = Trajectory.Linear(angleRad = 1.87f)
 ) : PixieObstacle(
     id = id,
     position = Vec2(targetGroundX + 45f, -20f), // Starts above viewport
@@ -30,6 +35,8 @@ class VolcanicMeteor(
     var hasStartedFalling: Boolean = false
         private set
     var hasImpactedGround: Boolean = false
+        private set
+    var flightTime: Float = 0f
         private set
     private var impactTimeRemaining: Float = 0.25f
 
@@ -52,7 +59,8 @@ class VolcanicMeteor(
             val playerX = context.distance * 10f // Convert back to world units
             if (targetGroundX - playerX <= triggerDistance) {
                 hasStartedFalling = true
-                velocity = Vec2(-40f, 130f)
+                flightTime = 0f
+                velocity = trajectory.computeVelocity(position, velocity, flightTime, speed, dt)
                 motionBlur = MotionBlurConfig(enabled = true, strength = 0.75f, maxTrailSamples = 4)
             } else {
                 // Keep above screen until triggered
@@ -68,6 +76,9 @@ class VolcanicMeteor(
             }
             return
         }
+
+        flightTime += dt
+        velocity = trajectory.computeVelocity(position, velocity, flightTime, speed, dt)
 
         super.update(dt, context)
 

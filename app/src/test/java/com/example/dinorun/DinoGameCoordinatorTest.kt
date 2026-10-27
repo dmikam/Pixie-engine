@@ -5,6 +5,7 @@ import androidx.test.core.app.ApplicationProvider
 import com.example.dinorun.entities.CactusObstacle
 import com.example.dinorun.entities.ColorSparkPickup
 import com.example.dinorun.entities.PterodactylHazard
+import com.example.dinorun.entities.VolcanicMeteor
 import com.example.dinorun.world.PrehistoricWorldDefinition
 import com.example.dinorun.world.VolcanicCraterWorldDefinition
 import com.pixie.android.audio.AndroidSoundPoolAudioAdapter
@@ -363,4 +364,120 @@ class DinoGameCoordinatorTest {
             audio.release()
         }
     }
+
+    @Test
+    fun `pterodactyl hazard updates position along sine wave trajectory`() {
+        val (audio, _, coordinator) = createContextAndCoordinator()
+        try {
+            val startPos = Vec2(300f, 100f)
+            val ptero = PterodactylHazard(
+                id = "sine_ptero",
+                position = startPos,
+                speed = 40f
+            )
+
+            // Step 1: 0.1s
+            ptero.update(0.1f, coordinator.engine.context)
+            assertTrue("Pterodactyl moves leftwards", ptero.position.x < startPos.x)
+            assertEquals(0.1f, ptero.flightTime, 0.001f)
+            assertTrue("Trajectory velocity is non-zero in X", ptero.velocity.x < 0f)
+
+            // Step over several frames
+            val prevY = ptero.position.y
+            ptero.update(0.2f, coordinator.engine.context)
+            assertTrue("Pterodactyl continues moving left", ptero.position.x < startPos.x - 4f)
+            assertTrue("Pterodactyl oscillates vertically along trajectory", ptero.position.y != prevY)
+            assertEquals("fly", ptero.currentAnimationName)
+        } finally {
+            audio.release()
+        }
+    }
+
+    @Test
+    fun `volcanic meteor triggers when player approaches and falls along linear trajectory to ground impact`() {
+        val (audio, _, coordinator) = createContextAndCoordinator()
+        try {
+            val groundY = coordinator.currentWorld.horizonY
+            val targetX = 200f
+            val meteor = VolcanicMeteor(
+                id = "test_meteor",
+                targetGroundX = targetX,
+                groundY = groundY,
+                triggerDistance = 150f
+            )
+
+            // Initially before trigger distance (distance = 0, playerX = 0)
+            meteor.update(0.016f, coordinator.engine.context)
+            assertFalse("Meteor should not start falling when player is far away", meteor.hasStartedFalling)
+            assertEquals(-20f, meteor.position.y, 0.001f)
+
+            // Player moves close enough to trigger (playerX = 60f -> 200 - 60 = 140 <= 150)
+            coordinator.engine.context.distance = 6f
+            meteor.update(0.016f, coordinator.engine.context)
+            assertTrue("Meteor triggers and starts falling", meteor.hasStartedFalling)
+            assertTrue("Velocity in X is negative (falling forward-left)", meteor.velocity.x < 0f)
+            assertTrue("Velocity in Y is positive (downward)", meteor.velocity.y > 100f)
+
+            // Advance frames until impact with ground
+            repeat(30) {
+                if (!meteor.hasImpactedGround) {
+                    meteor.update(0.05f, coordinator.engine.context)
+                }
+            }
+
+            assertTrue("Meteor should impact ground surface", meteor.hasImpactedGround)
+            val expectedGroundContact = groundY - meteor.size.y
+            assertEquals(expectedGroundContact, meteor.position.y, 0.001f)
+            assertEquals(Vec2.ZERO, meteor.velocity)
+            assertEquals("impact", meteor.currentAnimationName)
+        } finally {
+            audio.release()
+        }
+    }
+
+    @Test
+    fun `pterodactyl hazards spawn strictly after 500m and maintain 140px safe clearance from cacti`() {
+        val earlyCtx = com.pixie.engine.core.context.GameContext().apply { distance = 450f }
+        val lateCtx = com.pixie.engine.core.context.GameContext().apply { distance = 650f }
+        for (world in listOf(PrehistoricWorldDefinition(1234L), VolcanicCraterWorldDefinition(5678L))) {
+            var earlyCount = 0
+            var lateCount = 0
+            for (idx in 2..20) {
+                earlyCount += world.spawnChunkObjects(idx, idx * 320f, 320f, 135f, earlyCtx).count { it is PterodactylHazard }
+                val late = world.spawnChunkObjects(idx, idx * 320f, 320f, 135f, lateCtx)
+                val pteros = late.filterIsInstance<PterodactylHazard>()
+                val cacti = late.filterIsInstance<CactusObstacle>()
+                lateCount += pteros.size
+                pteros.forEach { p -> cacti.forEach { c -> assertTrue(kotlin.math.abs(p.position.x - c.position.x) >= 140f) } }
+            }
+            assertEquals(0, earlyCount)
+            assertTrue(lateCount > 0)
+        }
+    }
+
+    @Test
+    fun `volcanic meteors spawn strictly after 2000m and maintain 150px clearance from all hazards`() {
+        val earlyCtx = com.pixie.engine.core.context.GameContext().apply { distance = 1800f }
+        val lateCtx = com.pixie.engine.core.context.GameContext().apply { distance = 2500f }
+        for (world in listOf(PrehistoricWorldDefinition(9999L), VolcanicCraterWorldDefinition(8888L))) {
+            var earlyCount = 0
+            var lateCount = 0
+            for (idx in 2..30) {
+                earlyCount += world.spawnChunkObjects(idx, idx * 320f, 320f, 135f, earlyCtx).count { it is VolcanicMeteor }
+                val late = world.spawnChunkObjects(idx, idx * 320f, 320f, 135f, lateCtx)
+                val meteors = late.filterIsInstance<VolcanicMeteor>()
+                lateCount += meteors.size
+                meteors.forEach { m ->
+                    late.filter { it !== m && (it is CactusObstacle || it is PterodactylHazard || it is VolcanicMeteor) }.forEach { h ->
+                        val hX = if (h is VolcanicMeteor) h.targetGroundX else h.position.x
+                        assertTrue(kotlin.math.abs(m.targetGroundX - hX) >= 150f)
+                    }
+                }
+            }
+            assertEquals(0, earlyCount)
+            assertTrue(lateCount > 0)
+        }
+    }
 }
+
+

@@ -7,7 +7,7 @@ import com.pixie.engine.core.math.Vec2
 import com.pixie.engine.core.sprite.AnimationFrame
 import com.pixie.engine.core.sprite.AnimationSequence
 import com.pixie.engine.core.sprite.PixelSprite
-import kotlin.math.sin
+import com.pixie.engine.core.weapon.Trajectory
 
 /**
  * Self-encapsulated Flying Pterodactyl aerial hazard.
@@ -16,7 +16,12 @@ import kotlin.math.sin
 class PterodactylHazard(
     id: String,
     position: Vec2,
-    val speed: Float = 40f
+    val speed: Float = 40f,
+    val trajectory: Trajectory = Trajectory.SineWave(
+        baseAngleRad = Math.PI.toFloat(),
+        frequency = 6f,
+        amplitude = 28f
+    )
 ) : PixieEnemy(
     id = id,
     position = position,
@@ -26,6 +31,8 @@ class PterodactylHazard(
     contactDamage = 100f,
     initialClasses = setOf("hazard", "flying_hazard", "obstacle")
 ) {
+    var flightTime: Float = 0f
+
     init {
         velocity = Vec2(-speed, 0f)
         setAnimation("fly", FLY_ANIMATION)
@@ -33,10 +40,9 @@ class PterodactylHazard(
     }
 
     override fun update(dt: Float, context: GameContext) {
+        flightTime += dt
+        velocity = trajectory.computeVelocity(position, velocity, flightTime, speed, dt)
         super.update(dt, context)
-        // Natural flapping hover oscillation
-        val wave = sin((context.timeElapsedSeconds * 6f).toDouble()).toFloat() * 8f * dt
-        position += Vec2(0f, wave)
     }
 
     companion object {

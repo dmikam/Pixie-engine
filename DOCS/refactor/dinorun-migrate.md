@@ -85,17 +85,17 @@ Refactor Dinorun using **localized, surgical edits** to consume engine-core subs
 *Current State:* `PterodactylHazard.kt` calculates sinusoidal hovering via raw `kotlin.math.sin` dt integration in `update()`. `VolcanicMeteor.kt` manually steps velocity `Vec2(-40f, 130f)`.  
 *Target State:* Adopt engine `com.pixie.engine.core.weapon.Trajectory` strategies for deterministic motion calculation.
 
-- [ ] **2.1. Integrate `Trajectory.SineWave` into `PterodactylHazard.kt`**
-  - [ ] Replace manual wave calculation with `Trajectory.SineWave(baseAngleRad = Math.PI.toFloat(), frequency = 6f, amplitude = 28f)`.
-  - [ ] Delegate velocity update per frame via `trajectory.computeVelocity(position, velocity, flightTime, speed, dt)`.
-  - [ ] Preserve flap animation sequence (`WING_UP_SPRITE`, `WING_DOWN_SPRITE`), bounding box (18x14), health (15f), and score (250 pts).
-- [ ] **2.2. Integrate `Trajectory.Linear` into `VolcanicMeteor.kt`**
-  - [ ] Replace hardcoded vector mutation with `Trajectory.Linear(angleRad = 1.87f)` (or `Trajectory.Accelerating`).
-  - [ ] Keep proximity trigger distance (`targetGroundX - playerX <= triggerDistance`) and ground clamping surface logic (`groundY - size.y`).
-  - [ ] Preserve meteor and scorch impact animation sequences.
-- [ ] **2.3. Verify Hazard Separation & Playability**
-  - [ ] Ensure Pterodactyls still spawn strictly after 500m and never overlap cacti (140px safe clearance).
-  - [ ] Ensure Meteors still spawn strictly after 2000m with 150px clearance from ground and aerial hazards.
+- [x] **2.1. Integrate `Trajectory.SineWave` into `PterodactylHazard.kt`**
+  - [x] Replace manual wave calculation with `Trajectory.SineWave(baseAngleRad = Math.PI.toFloat(), frequency = 6f, amplitude = 28f)`.
+  - [x] Delegate velocity update per frame via `trajectory.computeVelocity(position, velocity, flightTime, speed, dt)`.
+  - [x] Preserve flap animation sequence (`WING_UP_SPRITE`, `WING_DOWN_SPRITE`), bounding box (18x14), health (15f), and score (250 pts).
+- [x] **2.2. Integrate `Trajectory.Linear` into `VolcanicMeteor.kt`**
+  - [x] Replace hardcoded vector mutation with `Trajectory.Linear(angleRad = 1.87f)` (or `Trajectory.Accelerating`).
+  - [x] Keep proximity trigger distance (`targetGroundX - playerX <= triggerDistance`) and ground clamping surface logic (`groundY - size.y`).
+  - [x] Preserve meteor and scorch impact animation sequences.
+- [x] **2.3. Verify Hazard Separation & Playability**
+  - [x] Ensure Pterodactyls still spawn strictly after 500m and never overlap cacti (140px safe clearance).
+  - [x] Ensure Meteors still spawn strictly after 2000m with 150px clearance from ground and aerial hazards.
 
 ---
 
@@ -185,7 +185,7 @@ Refactor Dinorun using **localized, surgical edits** to consume engine-core subs
     - `world switching and restart resets game state and updates world configuration`
     - `dynamic difficulty scales player run speed as difficulty rises`
 - [ ] **7.3. Add Trajectory & Particle Verification Tests**
-  - [ ] Add test verifying `PterodactylHazard` updates position along sine wave trajectory.
+  - [x] Add test verifying `PterodactylHazard` updates position along sine wave trajectory.
   - [ ] Add test verifying `VolcanicMeteor` ground impact spawns particles into `engine.particleLayer`.
 - [ ] **7.4. Compile Applet Check**
   - [ ] Run `compile_applet` to ensure pristine Android build without warnings or missing symbols.

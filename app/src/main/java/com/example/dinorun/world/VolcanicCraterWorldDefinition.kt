@@ -58,74 +58,83 @@ class VolcanicCraterWorldDefinition(
         val allowPtero = context.distance >= 500f
         val allowMeteor = context.distance >= 2000f
 
-        // Slot 1: Hazard at startX + 70f
-        val slot1X = startX + 70f
-        if (allowPtero && r.nextFloat() < 0.4f) {
-            val isLow = r.nextBoolean()
-            val pteroY = if (isLow) groundY - 22f else groundY - 44f
-            val ptero = PterodactylHazard(
-                id = "volcano_ptero_$chunkIndex",
-                position = Vec2(slot1X, pteroY),
-                speed = 48f
-            )
-            items.add(ptero)
-            occupiedX.add(slot1X)
-        } else {
-            val cactus = CactusObstacle(
-                id = "crater_spike_$chunkIndex",
-                position = Vec2(slot1X, groundY - 18f),
-                isDouble = true
-            )
-            items.add(cactus)
-            occupiedX.add(slot1X)
-        }
+        // Slot 1: Hazard at startX + 65f
+        val slot1X = startX + 65f
+        spawnSlot1Hazard(items, occupiedX, slot1X, groundY, chunkIndex, allowPtero, r)
 
-        // Slot 2: Hazard at startX + 230f (guaranteed 160px clear of Slot 1)
+        // Slot 2 / Meteor hazard zone (startX + 230f, >= 165px safe clearance from Slot 1)
         val slot2X = startX + 230f
-        if (isPositionSafe(slot2X, 140f)) {
-            if (allowPtero && r.nextFloat() < 0.5f) {
-                val isLow = r.nextBoolean()
-                val pteroY = if (isLow) groundY - 22f else groundY - 44f
-                val ptero = PterodactylHazard(
-                    id = "volcano_ptero_2_$chunkIndex",
-                    position = Vec2(slot2X, pteroY),
-                    speed = 50f
-                )
-                items.add(ptero)
-                occupiedX.add(slot2X)
-            } else if (r.nextFloat() < 0.6f) {
-                val cactus = CactusObstacle(
-                    id = "crater_spike_2_$chunkIndex",
-                    position = Vec2(slot2X, groundY - 18f),
-                    isDouble = false
-                )
-                items.add(cactus)
-                occupiedX.add(slot2X)
-            }
-        }
-
-        // Slot 3: Falling Meteor strictly after 2000m with clearance
-        if (allowMeteor && chunkIndex > 4 && r.nextFloat() < 0.45f) {
-            val meteorLandingX = startX + 150f
-            if (isPositionSafe(meteorLandingX, 150f)) {
-                val meteor = VolcanicMeteor(
-                    id = "volcano_meteor_$chunkIndex",
-                    targetGroundX = meteorLandingX,
-                    groundY = groundY,
-                    triggerDistance = 180f
-                )
-                items.add(meteor)
-                occupiedX.add(meteorLandingX)
-            }
+        val meteorSpawned = spawnMeteorHazard(items, occupiedX, slot2X, groundY, chunkIndex, allowMeteor, r, ::isPositionSafe)
+        if (!meteorSpawned && isPositionSafe(slot2X, 140f)) {
+            spawnSlot2Hazard(items, occupiedX, slot2X, groundY, chunkIndex, allowPtero, r)
         }
 
         // Color Energy Sparks (Pickups)
-        val spark = ColorSparkPickup(
-            id = "magma_spark_$chunkIndex",
-            position = Vec2(startX + 115f, groundY - 30f)
-        )
-        items.add(spark)
+        items.add(ColorSparkPickup("magma_spark_$chunkIndex", Vec2(startX + 115f, groundY - 30f)))
 
         return items
+    }
+
+    private fun spawnSlot1Hazard(
+        items: MutableList<PixieObject>,
+        occupiedX: MutableList<Float>,
+        x: Float,
+        groundY: Float,
+        chunkIndex: Int,
+        allowPtero: Boolean,
+        r: Random
+    ) {
+        if (allowPtero && r.nextFloat() < 0.4f) {
+            val isLow = r.nextBoolean()
+            val pteroY = if (isLow) groundY - 22f else groundY - 44f
+            items.add(PterodactylHazard("volcano_ptero_$chunkIndex", Vec2(x, pteroY), speed = 48f))
+        } else {
+            items.add(CactusObstacle("crater_spike_$chunkIndex", Vec2(x, groundY - 18f), isDouble = true))
+        }
+        occupiedX.add(x)
+    }
+
+    private fun spawnMeteorHazard(
+        items: MutableList<PixieObject>,
+        occupiedX: MutableList<Float>,
+        x: Float,
+        groundY: Float,
+        chunkIndex: Int,
+        allowMeteor: Boolean,
+        r: Random,
+        isPositionSafe: (Float, Float) -> Boolean
+    ): Boolean {
+        if (allowMeteor && chunkIndex > 4 && r.nextFloat() < 0.45f && isPositionSafe(x, 150f)) {
+            val meteor = VolcanicMeteor(
+                id = "volcano_meteor_$chunkIndex",
+                targetGroundX = x,
+                groundY = groundY,
+                triggerDistance = 180f
+            )
+            items.add(meteor)
+            occupiedX.add(x)
+            return true
+        }
+        return false
+    }
+
+    private fun spawnSlot2Hazard(
+        items: MutableList<PixieObject>,
+        occupiedX: MutableList<Float>,
+        x: Float,
+        groundY: Float,
+        chunkIndex: Int,
+        allowPtero: Boolean,
+        r: Random
+    ) {
+        if (allowPtero && r.nextFloat() < 0.5f) {
+            val isLow = r.nextBoolean()
+            val pteroY = if (isLow) groundY - 22f else groundY - 44f
+            items.add(PterodactylHazard("volcano_ptero_2_$chunkIndex", Vec2(x, pteroY), speed = 50f))
+            occupiedX.add(x)
+        } else if (r.nextFloat() < 0.6f) {
+            items.add(CactusObstacle("crater_spike_2_$chunkIndex", Vec2(x, groundY - 18f), isDouble = false))
+            occupiedX.add(x)
+        }
     }
 }
