@@ -54,6 +54,16 @@ class SkyLayer(
 ) : PixieLayer {
     override val name: String = "Layer1_Sky"
 
+    companion object {
+        const val DAY_WINDOW_START = 0.04f
+        const val DAY_WINDOW_END = 0.54f
+    }
+
+    val isDay: Boolean
+        get() = cycleProgress in DAY_WINDOW_START..DAY_WINDOW_END
+
+    var onCelestialShift: ((isDay: Boolean) -> Unit)? = null
+
     var cycleProgress: Float = 0.15f // 0=dawn, 0.25=noon, 0.5=sunset, 0.75=midnight
     private val stars = mutableListOf<Star>()
 
@@ -92,7 +102,11 @@ class SkyLayer(
 
     override fun update(dt: Float, context: GameContext) {
         if (dayNightCycleSeconds > 0f) {
+            val wasDay = isDay
             cycleProgress = (cycleProgress + (dt / dayNightCycleSeconds)) % 1.0f
+            if (wasDay != isDay) {
+                onCelestialShift?.invoke(isDay)
+            }
         }
         for (star in stars) {
             star.twinklePhase += dt * 3.5f
@@ -111,10 +125,10 @@ class SkyLayer(
         renderStars(batch, horizonY, width)
 
         // 3. Celestial Movement around common center
-        val dayWindowStart = 0.04f
-        val dayWindowEnd = 0.54f
+        val dayWindowStart = DAY_WINDOW_START
+        val dayWindowEnd = DAY_WINDOW_END
         val windowDuration = 0.50f
-        val isDay = cycleProgress in dayWindowStart..dayWindowEnd
+        val isDay = this.isDay
 
         if (isDay) {
             renderSun(batch, dayWindowStart, windowDuration)

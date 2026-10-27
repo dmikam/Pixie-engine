@@ -50,7 +50,16 @@ class DinoGameCoordinator(
     fun applyWorldConfiguration(world: WorldDefinition) {
         currentWorld = world
         engine.horizon.horizonY = world.horizonY
-        engine.skyLayer.dayNightCycleSeconds = world.dayNightCycleSeconds
+        engine.skyLayer.apply {
+            dayNightCycleSeconds = world.dayNightCycleSeconds
+            transitMode = world.transitMode
+            celestialCenter = world.celestialCenter
+            celestialRadiusX = world.celestialRadiusX
+            celestialRadiusY = world.celestialRadiusY
+            onCelestialShift = { _ ->
+                audioAdapter.playSound(AudioEvent.DAY_NIGHT_SHIFT)
+            }
+        }
         engine.cloudLayer.windVelocity = world.windVelocity
 
         // Wire chunk procedural generation to the world definition

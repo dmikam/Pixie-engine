@@ -6,6 +6,7 @@ import com.example.dinorun.entities.PterodactylHazard
 import com.example.dinorun.entities.VolcanicMeteor
 import com.pixie.engine.core.context.GameContext
 import com.pixie.engine.core.entity.PixieObject
+import com.pixie.engine.core.layer.CelestialTransitMode
 import com.pixie.engine.core.math.Vec2
 import com.pixie.engine.core.world.WorldDefinition
 import java.util.Random
@@ -30,6 +31,12 @@ class PrehistoricWorldDefinition(
     override val horizonY: Float = 135f
     override val dayNightCycleSeconds: Float = 60f
     override val windVelocity: Float = 12f
+
+    // Majestic high-arch circular orbit with 60s day/night cycle and full rotating star field
+    override val transitMode: CelestialTransitMode = CelestialTransitMode.CIRCULAR
+    override val celestialCenter: Vec2 = Vec2(160f, 140f)
+    override val celestialRadiusX: Float = 145f
+    override val celestialRadiusY: Float = 110f
 
     override val groundColor: Int = 0xFF5D4037.toInt()   // Dirt brown
     override val surfaceColor: Int = 0xFF388E3C.toInt()  // Surface moss green

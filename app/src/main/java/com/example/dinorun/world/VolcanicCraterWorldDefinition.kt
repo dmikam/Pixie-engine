@@ -6,6 +6,7 @@ import com.example.dinorun.entities.PterodactylHazard
 import com.example.dinorun.entities.VolcanicMeteor
 import com.pixie.engine.core.context.GameContext
 import com.pixie.engine.core.entity.PixieObject
+import com.pixie.engine.core.layer.CelestialTransitMode
 import com.pixie.engine.core.math.Vec2
 import com.pixie.engine.core.world.WorldDefinition
 import java.util.Random
@@ -31,6 +32,12 @@ class VolcanicCraterWorldDefinition(
     override val horizonY: Float = 135f
     override val dayNightCycleSeconds: Float = 40f
     override val windVelocity: Float = 28f
+
+    // Aggressive, low-horizon orbit with 40s cycle and reddish twilight
+    override val transitMode: CelestialTransitMode = CelestialTransitMode.CIRCULAR
+    override val celestialCenter: Vec2 = Vec2(160f, 155f)
+    override val celestialRadiusX: Float = 150f
+    override val celestialRadiusY: Float = 65f
 
     override val groundColor: Int = 0xFF212121.toInt()   // Basalt black
     override val surfaceColor: Int = 0xFFFF5722.toInt()  // Molten magma orange

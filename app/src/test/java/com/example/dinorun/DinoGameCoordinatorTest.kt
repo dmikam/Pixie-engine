@@ -12,6 +12,7 @@ import com.pixie.android.audio.AndroidSoundPoolAudioAdapter
 import com.pixie.android.haptic.AndroidHapticAdapter
 import com.pixie.android.input.ControlMode
 import com.pixie.android.input.DualModeInputAdapter
+import com.pixie.engine.core.layer.CelestialTransitMode
 import com.pixie.engine.core.math.Vec2
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -283,6 +284,11 @@ class DinoGameCoordinatorTest {
             assertEquals(3, coordinator.engine.context.livesLeft)
             assertTrue(coordinator.player.isGrounded)
             assertEquals(volcanicWorld.horizonY, coordinator.engine.horizon.horizonY, 0.001f)
+            assertEquals(volcanicWorld.transitMode, coordinator.engine.skyLayer.transitMode)
+            assertEquals(volcanicWorld.celestialCenter, coordinator.engine.skyLayer.celestialCenter)
+            assertEquals(volcanicWorld.celestialRadiusX, coordinator.engine.skyLayer.celestialRadiusX, 0.001f)
+            assertEquals(volcanicWorld.celestialRadiusY, coordinator.engine.skyLayer.celestialRadiusY, 0.001f)
+            assertEquals(volcanicWorld.dayNightCycleSeconds, coordinator.engine.skyLayer.dayNightCycleSeconds, 0.001f)
         } finally {
             audio.release()
         }
@@ -476,6 +482,60 @@ class DinoGameCoordinatorTest {
             }
             assertEquals(0, earlyCount)
             assertTrue(lateCount > 0)
+        }
+    }
+
+    @Test
+    fun `world definitions configure celestial orbit parameters`() {
+        val prehistoric = PrehistoricWorldDefinition()
+        assertEquals(CelestialTransitMode.CIRCULAR, prehistoric.transitMode)
+        assertEquals(Vec2(160f, 140f), prehistoric.celestialCenter)
+        assertEquals(145f, prehistoric.celestialRadiusX, 0.001f)
+        assertEquals(110f, prehistoric.celestialRadiusY, 0.001f)
+        assertEquals(60f, prehistoric.dayNightCycleSeconds, 0.001f)
+
+        val volcanic = VolcanicCraterWorldDefinition()
+        assertEquals(CelestialTransitMode.CIRCULAR, volcanic.transitMode)
+        assertEquals(Vec2(160f, 155f), volcanic.celestialCenter)
+        assertEquals(150f, volcanic.celestialRadiusX, 0.001f)
+        assertEquals(65f, volcanic.celestialRadiusY, 0.001f)
+        assertEquals(40f, volcanic.dayNightCycleSeconds, 0.001f)
+    }
+
+    @Test
+    fun `celestial shift triggers audio event on day-to-night and night-to-day transitions`() {
+        val (audio, _, coordinator) = createContextAndCoordinator()
+        try {
+            var shiftCount = 0
+            var lastShiftWasDay: Boolean? = null
+            val originalShift = coordinator.engine.skyLayer.onCelestialShift
+            coordinator.engine.skyLayer.onCelestialShift = { isDay ->
+                originalShift?.invoke(isDay)
+                shiftCount++
+                lastShiftWasDay = isDay
+            }
+
+            coordinator.engine.skyLayer.cycleProgress = 0.535f
+            coordinator.engine.skyLayer.dayNightCycleSeconds = 10f
+            assertTrue(coordinator.engine.skyLayer.isDay)
+
+            // Step across day-to-night threshold (0.54f)
+            coordinator.engine.skyLayer.update(0.1f, coordinator.engine.context)
+            assertFalse(coordinator.engine.skyLayer.isDay)
+            assertEquals(1, shiftCount)
+            assertEquals(false, lastShiftWasDay)
+
+            // Move near night-to-day threshold (0.04f)
+            coordinator.engine.skyLayer.cycleProgress = 0.035f
+            assertFalse(coordinator.engine.skyLayer.isDay)
+
+            // Step across night-to-day threshold
+            coordinator.engine.skyLayer.update(0.1f, coordinator.engine.context)
+            assertTrue(coordinator.engine.skyLayer.isDay)
+            assertEquals(2, shiftCount)
+            assertEquals(true, lastShiftWasDay)
+        } finally {
+            audio.release()
         }
     }
 }

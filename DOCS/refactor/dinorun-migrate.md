@@ -103,21 +103,21 @@ Refactor Dinorun using **localized, surgical edits** to consume engine-core subs
 *Current State:* `DinoGameCoordinator.kt` only wires `dayNightCycleSeconds` and `windVelocity`. `PrehistoricWorldDefinition` and `VolcanicCraterWorldDefinition` do not parameterize celestial transit or star dynamics.  
 *Target State:* Expose and configure engine `SkyLayer` features in `WorldDefinition`.
 
-- [ ] **3.1. Extend `WorldDefinition` / Dinorun Worlds with Sky Properties**
-  - [ ] Add optional `transitMode: CelestialTransitMode = CelestialTransitMode.CIRCULAR` to `WorldDefinition`.
-  - [ ] Add `celestialCenter: Vec2`, `celestialRadiusX: Float`, `celestialRadiusY: Float` to allow worlds to customize the sun/moon arc.
-  - [ ] Configure `PrehistoricWorldDefinition` for majestic high-arch circular orbit with 60s day/night cycle and full rotating star field.
-  - [ ] Configure `VolcanicCraterWorldDefinition` for aggressive, low-horizon orbit with 40s cycle and reddish twilight.
-- [ ] **3.2. Apply Celestial Properties in `DinoGameCoordinator.kt`**
-  - [ ] In `applyWorldConfiguration(world: WorldDefinition)`:
+- [x] **3.1. Extend `WorldDefinition` / Dinorun Worlds with Sky Properties**
+  - [x] Add optional `transitMode: CelestialTransitMode = CelestialTransitMode.CIRCULAR` to `WorldDefinition`.
+  - [x] Add `celestialCenter: Vec2`, `celestialRadiusX: Float`, `celestialRadiusY: Float` to allow worlds to customize the sun/moon arc.
+  - [x] Configure `PrehistoricWorldDefinition` for majestic high-arch circular orbit with 60s day/night cycle and full rotating star field.
+  - [x] Configure `VolcanicCraterWorldDefinition` for aggressive, low-horizon orbit with 40s cycle and reddish twilight.
+- [x] **3.2. Apply Celestial Properties in `DinoGameCoordinator.kt`**
+  - [x] In `applyWorldConfiguration(world: WorldDefinition)`:
     ```kotlin
     engine.skyLayer.transitMode = world.transitMode
     engine.skyLayer.celestialCenter = world.celestialCenter
     engine.skyLayer.celestialRadiusX = world.celestialRadiusX
     engine.skyLayer.celestialRadiusY = world.celestialRadiusY
     ```
-- [ ] **3.3. Celestial Shift Audio Cues**
-  - [ ] Detect day-to-night and night-to-day transition thresholds in `DinoGameCoordinator` or `SkyLayer` and trigger `AudioEvent.DAY_NIGHT_SHIFT`.
+- [x] **3.3. Celestial Shift Audio Cues**
+  - [x] Detect day-to-night and night-to-day transition thresholds in `DinoGameCoordinator` or `SkyLayer` and trigger `AudioEvent.DAY_NIGHT_SHIFT`.
 
 ---
 
