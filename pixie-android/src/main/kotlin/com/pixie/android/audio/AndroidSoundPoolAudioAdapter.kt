@@ -32,6 +32,7 @@ class AndroidSoundPoolAudioAdapter(val context: Context) : AudioPort {
 
     override var isMuted: Boolean = false
     var masterVolume: Float = 0.85f
+    var onSoundPlayed: ((AudioEvent) -> Unit)? = null
 
     init {
         soundPool.setOnLoadCompleteListener { _, sampleId, status ->
@@ -60,6 +61,7 @@ class AndroidSoundPoolAudioAdapter(val context: Context) : AudioPort {
     }
 
     override fun playSound(event: AudioEvent) {
+        onSoundPlayed?.invoke(event)
         if (isMuted) return
 
         val soundId = soundMap[event] ?: return

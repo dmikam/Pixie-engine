@@ -1,6 +1,7 @@
 package com.example.dinorun
 
 import com.example.dinorun.entities.DinoPlayer
+import com.example.dinorun.entities.VolcanicMeteor
 import com.example.dinorun.world.PrehistoricWorldDefinition
 import com.pixie.android.audio.AndroidSoundPoolAudioAdapter
 import com.pixie.android.haptic.AndroidHapticAdapter
@@ -13,7 +14,10 @@ import com.pixie.engine.core.ports.AudioEvent
 import com.pixie.engine.core.ports.HapticFeedbackType
 import com.pixie.engine.core.entity.PixieCollectible
 import com.pixie.engine.core.entity.PixieEnemy
+import com.pixie.engine.core.entity.PixieObject
 import com.pixie.engine.core.entity.PixieObstacle
+import com.pixie.engine.core.particle.ExplosionType
+import com.pixie.engine.core.particle.ProceduralExplosion
 import com.pixie.engine.core.ports.VirtualResolution
 import com.pixie.engine.core.world.WorldDefinition
 
@@ -64,11 +68,19 @@ class DinoGameCoordinator(
 
         // Wire chunk procedural generation to the world definition
         engine.chunkManager.chunkSpawner = { chunkIndex, startX, width, ctx ->
-            world.spawnChunkObjects(chunkIndex, startX, width, world.horizonY, ctx)
+            val chunkObjects = world.spawnChunkObjects(chunkIndex, startX, width, world.horizonY, ctx)
+            for (obj in chunkObjects) {
+                if (obj is VolcanicMeteor) {
+                    obj.particleLayer = engine.particleLayer
+                    obj.audioPort = audioAdapter
+                }
+            }
+            chunkObjects
         }
     }
 
     fun setupGame() {
+        lastMilestoneHundred = 0
         val groundY = currentWorld.horizonY
 
         // Create player from self-encapsulated entity
@@ -93,7 +105,11 @@ class DinoGameCoordinator(
                 audioAdapter.playSound(AudioEvent.JUMP)
             }
         }
+        val wasDucking = player.isDucking
         player.setDuckingState(inputAdapter.isDuckPressed)
+        if (!wasDucking && player.isDucking) {
+            audioAdapter.playSound(AudioEvent.DUCK)
+        }
     }
 
     fun checkCustomCollisions() {
@@ -108,32 +124,65 @@ class DinoGameCoordinator(
 
             if (playerBox.intersects(obj.boundingBox)) {
                 if (obj is PixieCollectible) {
-                    val collected = obj.collect(player, engine.context)
-                    if (collected) {
-                        hapticAdapter.trigger(HapticFeedbackType.LIGHT)
-                        audioAdapter.playSound(AudioEvent.COLLECT)
-                        engine.colorRecovery.addProgress(0.15f)
-                        engine.context.score += 50L
-                        onStateChanged?.invoke()
-                    }
+                    handleCollectibleCollision(obj)
                 } else if (obj is PixieObstacle || obj is PixieEnemy || obj.isInClass("hazard")) {
-                    // Player hit obstacle/enemy hazard
-                    hapticAdapter.trigger(HapticFeedbackType.HEAVY)
-                    audioAdapter.playSound(AudioEvent.HIT)
-                    player.takeDamage(100f, engine.context)
-                    engine.context.livesLeft--
-                    obj.isAlive = false
-
-                    if (engine.context.livesLeft <= 0 || !player.isAlive) {
-                        engine.context.isGameOver = true
-                        audioAdapter.playSound(AudioEvent.GAME_OVER)
-                    }
-                    onStateChanged?.invoke()
+                    handleHazardCollision(obj)
                 }
             }
         }
 
-        // Distance and continuous score accumulation
+        updateDistanceAndScore()
+    }
+
+    private fun handleCollectibleCollision(collectible: PixieCollectible) {
+        val collected = collectible.collect(player, engine.context)
+        if (collected) {
+            ProceduralExplosion.trigger(
+                type = ExplosionType.SPARK_HIT,
+                position = collectible.position,
+                pool = engine.particleLayer.pool,
+                activeList = engine.particleLayer.activeParticles,
+                scale = 1.2f
+            )
+            hapticAdapter.trigger(HapticFeedbackType.LIGHT)
+            val wasFull = engine.colorRecovery.progress >= 1.0f
+            engine.colorRecovery.addProgress(0.15f)
+            if (!wasFull && engine.colorRecovery.progress >= 1.0f) {
+                audioAdapter.playSound(AudioEvent.SCORE_MILESTONE)
+            } else {
+                audioAdapter.playSound(AudioEvent.COLLECT)
+            }
+            engine.context.score += 50L
+            onStateChanged?.invoke()
+        }
+    }
+
+    private fun handleHazardCollision(hazard: PixieObject) {
+        ProceduralExplosion.trigger(
+            type = ExplosionType.SPARK_HIT,
+            position = player.position,
+            pool = engine.particleLayer.pool,
+            activeList = engine.particleLayer.activeParticles,
+            scale = 1.5f
+        )
+        hapticAdapter.trigger(HapticFeedbackType.HEAVY)
+        if (hazard is VolcanicMeteor) {
+            audioAdapter.playSound(AudioEvent.EXPLOSION_LARGE)
+        } else {
+            audioAdapter.playSound(AudioEvent.HIT)
+        }
+        player.takeDamage(100f, engine.context)
+        engine.context.livesLeft--
+        hazard.isAlive = false
+
+        if (engine.context.livesLeft <= 0 || !player.isAlive) {
+            engine.context.isGameOver = true
+            audioAdapter.playSound(AudioEvent.GAME_OVER)
+        }
+        onStateChanged?.invoke()
+    }
+
+    private fun updateDistanceAndScore() {
         engine.context.distance = player.position.x / 10f
         engine.context.score = (engine.context.distance * 2f).toLong() + (engine.colorRecovery.progress * 500f).toLong()
 

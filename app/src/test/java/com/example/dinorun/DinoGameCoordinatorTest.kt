@@ -14,6 +14,7 @@ import com.pixie.android.input.ControlMode
 import com.pixie.android.input.DualModeInputAdapter
 import com.pixie.engine.core.layer.CelestialTransitMode
 import com.pixie.engine.core.math.Vec2
+import com.pixie.engine.core.ports.AudioEvent
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
@@ -165,6 +166,7 @@ class DinoGameCoordinatorTest {
             assertFalse("Spark should be collected", spark.isAlive)
             assertEquals(0.15f, coordinator.engine.colorRecovery.progress, 0.001f)
             assertTrue("Score should be awarded", coordinator.engine.context.score >= 50L)
+            assertTrue("Spark collection triggers burst particles", coordinator.engine.particleLayer.activeParticles.isNotEmpty())
             assertTrue("State change callback should be invoked", stateChangedNotified)
         } finally {
             audio.release()
@@ -193,6 +195,7 @@ class DinoGameCoordinatorTest {
             assertFalse("Player health is depleted", coordinator.player.isAlive)
             assertEquals(2, coordinator.engine.context.livesLeft)
             assertTrue("Lethal collision triggers game over", coordinator.engine.context.isGameOver)
+            assertTrue("Hazard collision triggers spark particles", coordinator.engine.particleLayer.activeParticles.isNotEmpty())
             assertTrue("State change listener invoked", stateChangedNotified)
         } finally {
             audio.release()
@@ -213,6 +216,7 @@ class DinoGameCoordinatorTest {
             assertFalse("Aerial hazard should be deactivated", ptero.isAlive)
             assertFalse(coordinator.player.isAlive)
             assertTrue(coordinator.engine.context.isGameOver)
+            assertTrue("Hazard collision triggers spark particles", coordinator.engine.particleLayer.activeParticles.isNotEmpty())
         } finally {
             audio.release()
         }
@@ -259,11 +263,64 @@ class DinoGameCoordinatorTest {
     fun `distance progression updates score and tracks milestones`() {
         val (audio, _, coordinator) = createContextAndCoordinator()
         try {
+            val playedAudio = mutableListOf<AudioEvent>()
+            audio.onSoundPlayed = { playedAudio.add(it) }
+
+            // Step before 100m (e.g. 80m -> position.x = 800f)
+            coordinator.player.position = Vec2(800f, coordinator.player.position.y)
+            coordinator.checkCustomCollisions()
+            assertEquals(80f, coordinator.engine.context.distance, 0.001f)
+            assertFalse("No milestone before 100m", playedAudio.contains(AudioEvent.SCORE_MILESTONE))
+
+            // Step across 100m milestone (e.g. 105m -> position.x = 1050f)
             coordinator.player.position = Vec2(1050f, coordinator.player.position.y)
             coordinator.checkCustomCollisions()
 
             assertEquals(105f, coordinator.engine.context.distance, 0.001f)
             assertTrue("Score accumulates from distance", coordinator.engine.context.score >= 210L)
+            assertEquals("SCORE_MILESTONE plays once at 100m", 1, playedAudio.count { it == AudioEvent.SCORE_MILESTONE })
+
+            // Advance before 200m (e.g. 180m)
+            coordinator.player.position = Vec2(1800f, coordinator.player.position.y)
+            coordinator.checkCustomCollisions()
+            assertEquals("SCORE_MILESTONE not played between 100m and 200m", 1, playedAudio.count { it == AudioEvent.SCORE_MILESTONE })
+
+            // Cross 200m milestone (e.g. 210m)
+            coordinator.player.position = Vec2(2100f, coordinator.player.position.y)
+            coordinator.checkCustomCollisions()
+            assertEquals("SCORE_MILESTONE plays again at 200m", 2, playedAudio.count { it == AudioEvent.SCORE_MILESTONE })
+
+            // Restart resets milestone tracking
+            coordinator.restart()
+            playedAudio.clear()
+            coordinator.player.position = Vec2(1050f, coordinator.player.position.y)
+            coordinator.checkCustomCollisions()
+            assertEquals("SCORE_MILESTONE triggers after restart across 100m", 1, playedAudio.count { it == AudioEvent.SCORE_MILESTONE })
+        } finally {
+            audio.release()
+        }
+    }
+
+    @Test
+    fun `full color restoration triggers victory fanfare audio event`() {
+        val (audio, _, coordinator) = createContextAndCoordinator()
+        try {
+            val playedAudio = mutableListOf<AudioEvent>()
+            audio.onSoundPlayed = { playedAudio.add(it) }
+
+            // Set progress to 90%
+            coordinator.engine.colorRecovery.setProgress(0.90f)
+
+            val spark = ColorSparkPickup(
+                id = "victory_spark",
+                position = coordinator.player.position,
+                restoreAmount = 0.15f
+            )
+            coordinator.engine.itemsLayer.addObject(spark)
+            coordinator.checkCustomCollisions()
+
+            assertEquals(1.0f, coordinator.engine.colorRecovery.progress, 0.001f)
+            assertTrue("100% color recovery triggers SCORE_MILESTONE victory fanfare", playedAudio.contains(AudioEvent.SCORE_MILESTONE))
         } finally {
             audio.release()
         }
@@ -442,6 +499,35 @@ class DinoGameCoordinatorTest {
     }
 
     @Test
+    fun `volcanic meteor ground impact spawns particles into engine particleLayer`() {
+        val (audio, _, coordinator) = createContextAndCoordinator()
+        try {
+            val groundY = coordinator.currentWorld.horizonY
+            val targetX = 200f
+            val meteor = VolcanicMeteor(
+                id = "particle_meteor",
+                targetGroundX = targetX,
+                groundY = groundY,
+                triggerDistance = 150f,
+                particleLayer = coordinator.engine.particleLayer
+            )
+
+            coordinator.engine.context.distance = 6f
+            meteor.update(0.016f, coordinator.engine.context)
+            repeat(30) {
+                if (!meteor.hasImpactedGround) {
+                    meteor.update(0.05f, coordinator.engine.context)
+                }
+            }
+
+            assertTrue("Meteor should impact ground", meteor.hasImpactedGround)
+            assertTrue("Ground blast particles must be spawned in particleLayer", coordinator.engine.particleLayer.activeParticles.isNotEmpty())
+        } finally {
+            audio.release()
+        }
+    }
+
+    @Test
     fun `pterodactyl hazards spawn strictly after 500m and maintain 140px safe clearance from cacti`() {
         val earlyCtx = com.pixie.engine.core.context.GameContext().apply { distance = 450f }
         val lateCtx = com.pixie.engine.core.context.GameContext().apply { distance = 650f }
@@ -534,6 +620,63 @@ class DinoGameCoordinatorTest {
             assertTrue(coordinator.engine.skyLayer.isDay)
             assertEquals(2, shiftCount)
             assertEquals(true, lastShiftWasDay)
+        } finally {
+            audio.release()
+        }
+    }
+
+    @Test
+    fun `volcanic meteor ground impact plays EXPLOSION_LARGE audio event`() {
+        val (audio, _, coordinator) = createContextAndCoordinator()
+        try {
+            val playedEvents = mutableListOf<AudioEvent>()
+            audio.onSoundPlayed = { playedEvents.add(it) }
+
+            val groundY = coordinator.currentWorld.horizonY
+            val targetX = 200f
+            val meteor = VolcanicMeteor(
+                id = "audio_meteor",
+                targetGroundX = targetX,
+                groundY = groundY,
+                triggerDistance = 150f,
+                particleLayer = coordinator.engine.particleLayer,
+                audioPort = audio
+            )
+
+            coordinator.engine.context.distance = 6f
+            meteor.update(0.016f, coordinator.engine.context)
+            repeat(30) {
+                if (!meteor.hasImpactedGround) {
+                    meteor.update(0.05f, coordinator.engine.context)
+                }
+            }
+
+            assertTrue("Meteor should have impacted ground", meteor.hasImpactedGround)
+            assertTrue("EXPLOSION_LARGE audio event must be triggered on impact", playedEvents.contains(AudioEvent.EXPLOSION_LARGE))
+        } finally {
+            audio.release()
+        }
+    }
+
+    @Test
+    fun `volcanic meteor player collision plays EXPLOSION_LARGE audio event`() {
+        val (audio, _, coordinator) = createContextAndCoordinator()
+        try {
+            val playedEvents = mutableListOf<AudioEvent>()
+            audio.onSoundPlayed = { playedEvents.add(it) }
+
+            val meteor = VolcanicMeteor(
+                id = "collision_meteor",
+                targetGroundX = coordinator.player.position.x,
+                groundY = coordinator.currentWorld.horizonY
+            )
+            meteor.position = coordinator.player.position
+            coordinator.engine.itemsLayer.addObject(meteor)
+
+            coordinator.checkCustomCollisions()
+
+            assertFalse("Meteor should be deactivated after collision", meteor.isAlive)
+            assertTrue("Collision with meteor plays EXPLOSION_LARGE audio event", playedEvents.contains(AudioEvent.EXPLOSION_LARGE))
         } finally {
             audio.release()
         }

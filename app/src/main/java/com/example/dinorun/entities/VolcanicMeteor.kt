@@ -10,6 +10,11 @@ import com.pixie.engine.core.sprite.AnimationFrame
 import com.pixie.engine.core.sprite.AnimationSequence
 import com.pixie.engine.core.sprite.PixelSprite
 
+import com.pixie.engine.core.particle.ExplosionType
+import com.pixie.engine.core.particle.ParticleLayer
+import com.pixie.engine.core.particle.ProceduralExplosion
+import com.pixie.engine.core.ports.AudioEvent
+import com.pixie.engine.core.ports.AudioPort
 import com.pixie.engine.core.weapon.Trajectory
 
 /**
@@ -23,7 +28,10 @@ class VolcanicMeteor(
     val groundY: Float,
     val triggerDistance: Float = 180f,
     val speed: Float = 136f,
-    val trajectory: Trajectory = Trajectory.Linear(angleRad = 1.87f)
+    val trajectory: Trajectory = Trajectory.Linear(angleRad = 1.87f),
+    var particleLayer: ParticleLayer? = null,
+    var audioPort: AudioPort? = null,
+    var onGroundImpact: ((position: Vec2) -> Unit)? = null
 ) : PixieObstacle(
     id = id,
     position = Vec2(targetGroundX + 45f, -20f), // Starts above viewport
@@ -90,6 +98,17 @@ class VolcanicMeteor(
             hasImpactedGround = true
             motionBlur = MotionBlurConfig(enabled = false)
             playAnimation("impact")
+            particleLayer?.let { layer ->
+                ProceduralExplosion.trigger(
+                    type = ExplosionType.GROUND_BLAST,
+                    position = position,
+                    pool = layer.pool,
+                    activeList = layer.activeParticles,
+                    scale = 1.0f
+                )
+            }
+            audioPort?.playSound(AudioEvent.EXPLOSION_LARGE)
+            onGroundImpact?.invoke(position)
         }
     }
 

@@ -125,14 +125,14 @@ Refactor Dinorun using **localized, surgical edits** to consume engine-core subs
 *Current State:* Dinorun does not emit any particles. Picking up a spark only changes a numeric progress bar; meteor ground impacts only swap to a static sprite.  
 *Target State:* Trigger engine `com.pixie.engine.core.particle.ProceduralExplosion` archetypes via `engine.particleLayer`.
 
-- [ ] **4.1. Color Spark Collection Burst**
-  - [ ] In `DinoGameCoordinator.checkCustomCollisions()`: when `obj is PixieCollectible`, trigger `ProceduralExplosion.trigger(ExplosionType.SPARK_HIT, obj.position, engine.particleLayer.pool, engine.particleLayer.activeParticles, scale = 1.2f)`.
-  - [ ] Zero allocation: reuses pre-allocated `engine.particleLayer.pool`.
-- [ ] **4.2. Volcanic Meteor Ground Impact Shockwave & Blast**
-  - [ ] When `VolcanicMeteor` impacts the ground surface, trigger `ProceduralExplosion.trigger(ExplosionType.GROUND_BLAST, position, engine.particleLayer.pool, engine.particleLayer.activeParticles, scale = 1.0f)`.
-  - [ ] Combines with the existing scorch animation for authentic arcade impact punch.
-- [ ] **4.3. Player Damage & Hazard Impact Sparks**
-  - [ ] When player strikes a cactus, pterodactyl, or meteor, trigger `ProceduralExplosion.trigger(ExplosionType.SPARK_HIT, player.position, engine.particleLayer.pool, engine.particleLayer.activeParticles, scale = 1.5f)`.
+- [x] **4.1. Color Spark Collection Burst**
+  - [x] In `DinoGameCoordinator.checkCustomCollisions()`: when `obj is PixieCollectible`, trigger `ProceduralExplosion.trigger(ExplosionType.SPARK_HIT, obj.position, engine.particleLayer.pool, engine.particleLayer.activeParticles, scale = 1.2f)`.
+  - [x] Zero allocation: reuses pre-allocated `engine.particleLayer.pool`.
+- [x] **4.2. Volcanic Meteor Ground Impact Shockwave & Blast**
+  - [x] When `VolcanicMeteor` impacts the ground surface, trigger `ProceduralExplosion.trigger(ExplosionType.GROUND_BLAST, position, engine.particleLayer.pool, engine.particleLayer.activeParticles, scale = 1.0f)`.
+  - [x] Combines with the existing scorch animation for authentic arcade impact punch.
+- [x] **4.3. Player Damage & Hazard Impact Sparks**
+  - [x] When player strikes a cactus, pterodactyl, or meteor, trigger `ProceduralExplosion.trigger(ExplosionType.SPARK_HIT, player.position, engine.particleLayer.pool, engine.particleLayer.activeParticles, scale = 1.5f)`.
 
 ---
 
@@ -140,12 +140,12 @@ Refactor Dinorun using **localized, surgical edits** to consume engine-core subs
 *Current State:* Dinorun only calls `JUMP`, `HIT`, `COLLECT`, `GAME_OVER`, and `SCORE_MILESTONE`. Sound presets already generated in `RetroAudioPresets` (`DUCK`, `EXPLOSION_LARGE`, `BUTTON_CLICK`, `DAY_NIGHT_SHIFT`) are unused.  
 *Target State:* Complete audio mapping across all player actions and environmental events.
 
-- [ ] **5.1. Duck Audio Feedback**
-  - [ ] In `DinoGameCoordinator.updateInputs()` or `DinoControls.kt`: Play `AudioEvent.DUCK` on downward duck transition.
-- [ ] **5.2. Meteor Impact Explosion Audio**
-  - [ ] When `VolcanicMeteor` strikes ground or damages player, play `AudioEvent.EXPLOSION_LARGE` or `AudioEvent.EXPLOSION_SMALL`.
-- [ ] **5.3. Milestone & Victory Fanfare**
-  - [ ] Verify `AudioEvent.SCORE_MILESTONE` continues to trigger every 100m distance.
+- [x] **5.1. Duck Audio Feedback**
+  - [x] In `DinoGameCoordinator.updateInputs()` or `DinoControls.kt`: Play `AudioEvent.DUCK` on downward duck transition.
+- [x] **5.2. Meteor Impact Explosion Audio**
+  - [x] When `VolcanicMeteor` strikes ground or damages player, play `AudioEvent.EXPLOSION_LARGE` or `AudioEvent.EXPLOSION_SMALL`.
+- [x] **5.3. Milestone & Victory Fanfare**
+  - [x] Verify `AudioEvent.SCORE_MILESTONE` continues to trigger every 100m distance.
 
 ---
 
@@ -186,6 +186,6 @@ Refactor Dinorun using **localized, surgical edits** to consume engine-core subs
     - `dynamic difficulty scales player run speed as difficulty rises`
 - [ ] **7.3. Add Trajectory & Particle Verification Tests**
   - [x] Add test verifying `PterodactylHazard` updates position along sine wave trajectory.
-  - [ ] Add test verifying `VolcanicMeteor` ground impact spawns particles into `engine.particleLayer`.
+  - [x] Add test verifying `VolcanicMeteor` ground impact spawns particles into `engine.particleLayer`.
 - [ ] **7.4. Compile Applet Check**
   - [ ] Run `compile_applet` to ensure pristine Android build without warnings or missing symbols.

@@ -35,7 +35,6 @@ object DinoControls {
             actionType = ArcadeActionType.DUCK,
             onPressDown = {
                 inputAdapter.setButtonDuck(true)
-                audioAdapter?.playSound(AudioEvent.DUCK)
             },
             onPressUp = {
                 inputAdapter.setButtonDuck(false)
