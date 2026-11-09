@@ -43,8 +43,9 @@ class DinoPlayer(
 
         // Dynamic parameter calculation based on GameContext (progression, difficulty, distance)
         parameterCalculator = { obj, ctx ->
+            // Harmonize run speed with continuous engine difficulty (0..100) and distance
             val difficultyScale = ctx.calculateDifficultyMultiplier(1.0f, 0.08f)
-            obj.parameters["runSpeed"] = baseSpeed * difficultyScale
+            obj.parameters["runSpeed"] = (baseSpeed * difficultyScale).coerceIn(baseSpeed * 0.8f, baseSpeed * 2.5f)
             obj.parameters["jumpForce"] = baseJumpForce
         }
     }
@@ -78,6 +79,7 @@ class DinoPlayer(
         // Running speed evaluated dynamically from context
         val currentSpeed = parameters["runSpeed"] ?: baseSpeed
         velocity = Vec2(currentSpeed, velocity.y)
+        context.currentMovingSpeed = currentSpeed
 
         // Gravity integration when airborne
         if (!isGrounded) {

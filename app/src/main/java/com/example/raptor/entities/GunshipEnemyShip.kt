@@ -7,8 +7,8 @@ import com.pixie.engine.core.sprite.AnimationSequence
 import com.pixie.engine.core.sprite.PixelSprite
 import com.pixie.engine.core.weapon.ProjectilePool
 import com.pixie.engine.core.weapon.StandardWeapons
+import com.pixie.engine.core.weapon.Trajectory
 import com.pixie.engine.core.weapon.WeaponSystem
-import kotlin.math.sin
 
 /**
  * Gunship: Heavy dreadnought craft.
@@ -40,14 +40,26 @@ class GunshipEnemyShip(
     override val explosionType: ExplosionType = ExplosionType.GROUND_BLAST
     override val explosionScale: Float = 1.6f
 
+    val trajectory: Trajectory = Trajectory.SineWave(
+        baseAngleRad = 1.5707963f,
+        frequency = 1.2f,
+        amplitude = 14f
+    )
+
     init {
         setAnimation("default", AnimationSequence.singleFrame(SPRITE_GUNSHIP))
         playAnimation("default")
     }
 
     override fun calculateFlightVelocity(speed: Float): Vec2 {
-        val vy = if (position.y < 85f) speed else speed * 0.7f
-        return Vec2(sin((flightTime + flightSeed) * 1.2f) * 14f, vy)
+        val effectiveSpeed = if (position.y < 85f) speed else speed * 0.7f
+        return trajectory.computeVelocity(
+            currentPosition = position,
+            currentVelocity = velocity,
+            flightTime = flightTime + flightSeed,
+            speed = effectiveSpeed,
+            dt = 0f
+        )
     }
 
     override fun getNextShootCooldown(): Float = 4.8f

@@ -225,7 +225,7 @@ private fun RoadmapLaunchButton(gameTitle: String, onLaunch: () -> Unit) {
 fun CapabilitiesMatrixTab(modifier: Modifier = Modifier) {
     val matrixRows = listOf(
         Triple("Camera Mode", "HorizontalScroller", "VerticalScroller"),
-        Triple("Camera (cont.)", "FixedScreen (Arkanoid)", "2D Follow (Chiki)"),
+        Triple("Camera (cont.)", "FixedScreen (Arkanoid)", "2D Follow (Super Pixie)"),
         Triple("Physics Query", "AABB Obstacle/Meteors", "High-Density Bullet Pool"),
         Triple("Collisions (cont.)", "Continuous Sub-Step (CCD)", "Tilemap Solid & Ledges"),
         Triple("Layer Stack", "5-Layer Dynamic Horizon", "Multi-Pass Cloud & Starfield"),

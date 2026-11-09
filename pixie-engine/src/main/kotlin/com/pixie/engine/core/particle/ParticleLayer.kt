@@ -38,6 +38,14 @@ class ParticleLayer(
         ProceduralExplosion.spawnShockwave(position, pool, activeParticles, count)
     }
 
+    fun spawnBrickShards(
+        position: Vec2,
+        gravity: Float = 600f,
+        color: Int = 0xFFB84418.toInt()
+    ) {
+        ProceduralExplosion.spawnBrickShards(position, pool, activeParticles, gravity, color)
+    }
+
     override fun update(dt: Float, context: GameContext) {
         if (!isEnabled || activeParticles.isEmpty()) return
 
@@ -73,11 +81,13 @@ class ParticleLayer(
             if (screenPos.x >= -10f && screenPos.x <= viewportWidth + 10f &&
                 screenPos.y >= -10f && screenPos.y <= viewportHeight + 10f
             ) {
+                val w = if (p.isTumbling && p.renderWidth > 0f) p.renderWidth else p.size
+                val h = if (p.isTumbling && p.renderHeight > 0f) p.renderHeight else p.size
                 batch.drawPixelRect(
                     x = screenPos.x,
                     y = screenPos.y,
-                    width = p.size,
-                    height = p.size,
+                    width = w,
+                    height = h,
                     color = p.currentColor,
                     saturation = 1.0f,
                     alpha = p.alpha

@@ -1,6 +1,7 @@
 package com.pixie.engine.core.camera
 
 import com.pixie.engine.core.context.GameContext
+import com.pixie.engine.core.math.RectF
 import com.pixie.engine.core.math.Vec2
 import com.pixie.engine.core.entity.PixieObject
 import com.pixie.engine.core.ports.VirtualResolution
@@ -47,6 +48,9 @@ class PixieCamera(
     var position: Vec2 = Vec2.ZERO
         private set
 
+    val viewportRect: RectF
+        get() = RectF(position.x, position.y, position.x + viewport.width, position.y + viewport.height)
+
     fun setPositionImmediate(pos: Vec2) {
         position = pos
     }
@@ -68,7 +72,14 @@ class PixieCamera(
             is GameViewMode.FixedScreen -> {
                 position = mode.screenOrigin
             }
+            is PlatformerFollowViewMode -> {
+                mode.update(this, target, dt, context)
+            }
         }
+    }
+
+    fun update(dt: Float, context: GameContext) {
+        update(null, dt, context)
     }
 
     fun worldToScreen(worldPos: Vec2): Vec2 {

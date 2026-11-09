@@ -5,7 +5,10 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -126,6 +129,29 @@ fun ArcadeButtonContent(
             config.sprite != null && config.sprite != PixelSprite.EMPTY -> {
                 PixelSpriteView(sprite = config.sprite, modifier = Modifier.size(28.dp))
             }
+            config.iconVector != null && !config.label.isNullOrEmpty() -> {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.Center,
+                    modifier = Modifier.padding(horizontal = 4.dp)
+                ) {
+                    Icon(
+                        imageVector = config.iconVector,
+                        contentDescription = config.label,
+                        tint = if (isPressed) Color.White else Color(0xFFE0F7FA),
+                        modifier = Modifier.size(16.dp)
+                    )
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text(
+                        text = config.label,
+                        color = if (isPressed) Color.White else Color(0xFFE0F7FA),
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Bold,
+                        fontFamily = FontFamily.Monospace,
+                        maxLines = 1
+                    )
+                }
+            }
             config.iconVector != null -> {
                 Icon(
                     imageVector = config.iconVector,
@@ -221,7 +247,7 @@ fun TactileArcadeButton(
                     }
                 } else Modifier
             )
-            .testTag("arcade_btn_${config.id}"),
+            .testTag(config.id),
         contentAlignment = Alignment.Center
     ) {
         ArcadeButtonHighlight(shape = shape, isPressed = isPressed)

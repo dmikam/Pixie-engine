@@ -5,12 +5,17 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.shape.RoundedCornerShape
+import com.pixie.android.input.ArcadeButtonConfig
+import com.pixie.android.input.ArcadeWingPillar
+import com.pixie.android.input.TactileArcadeButton
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Pause
@@ -32,7 +37,7 @@ import androidx.compose.ui.unit.sp
 import com.pixie.engine.core.context.DifficultyPreset
 
 /**
- * Top HUD Overlay for Raptor combat displaying mission status, level progress, score, and actions.
+ * Top HUD Overlay for Raptor combat displaying mission status, level progress, score, active weapon, and actions.
  */
 @Composable
 fun RaptorTopHud(
@@ -41,13 +46,17 @@ fun RaptorTopHud(
     difficulty: DifficultyPreset,
     distance: Float,
     targetDistance: Float,
+    activeWeaponId: String = "vulcan",
+    weaponTier: Int = 1,
     onPauseClick: () -> Unit,
     onBackClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     Surface(
         color = Color(0xCC0A0E17),
-        modifier = modifier.fillMaxWidth()
+        modifier = modifier
+            .fillMaxWidth()
+            .wrapContentHeight()
     ) {
         Column(
             modifier = Modifier
@@ -66,8 +75,48 @@ fun RaptorTopHud(
             }
 
             Spacer(modifier = Modifier.height(4.dp))
-            RaptorDifficultyChip(difficulty = difficulty)
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.Center,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                RaptorDifficultyChip(difficulty = difficulty)
+                Spacer(modifier = Modifier.width(6.dp))
+                RaptorActiveWeaponBadge(activeWeaponId = activeWeaponId, weaponTier = weaponTier)
+            }
         }
+    }
+}
+
+@Composable
+fun RaptorActiveWeaponBadge(
+    activeWeaponId: String,
+    weaponTier: Int,
+    modifier: Modifier = Modifier
+) {
+    val shortName = com.example.raptor.entities.RaptorWeapons.getShortName(activeWeaponId)
+    val label = if (activeWeaponId == "vulcan") "$shortName T$weaponTier" else shortName
+    val (chipBg, chipBorder, chipText) = when (activeWeaponId) {
+        "twin_plasma" -> Triple(Color(0xFF003366), Color(0xFF00E5FF), Color(0xFFE0F7FA))
+        "odin_laser" -> Triple(Color(0xFF4A148C), Color(0xFFE040FB), Color(0xFFF3E5F5))
+        "deathray" -> Triple(Color(0xFF5D1049), Color(0xFFFF4081), Color(0xFFFCE4EC))
+        else -> Triple(Color(0xFF004D40), Color(0xFF26A69A), Color(0xFFE0F2F1))
+    }
+
+    Surface(
+        shape = RoundedCornerShape(4.dp),
+        color = chipBg,
+        border = BorderStroke(1.dp, chipBorder),
+        modifier = modifier.testTag("raptor_active_weapon_badge")
+    ) {
+        Text(
+            text = "GUN: $label",
+            color = chipText,
+            fontSize = 9.sp,
+            fontWeight = FontWeight.Bold,
+            fontFamily = FontFamily.Monospace,
+            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+        )
     }
 }
 
@@ -171,31 +220,27 @@ fun RaptorDifficultyChip(
     difficulty: DifficultyPreset,
     modifier: Modifier = Modifier
 ) {
-    Row(
-        modifier = modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.Center
-    ) {
-        val chipColor = when (difficulty) {
-            DifficultyPreset.EASY -> Color(0xFF1B5E20)
-            DifficultyPreset.MEDIUM -> Color(0xFF0D47A1)
-            DifficultyPreset.DIFFICULT -> Color(0xFFE65100)
-            DifficultyPreset.HEAVY_METAL -> Color(0xFFB71C1C)
-            else -> Color(0xFF263238)
-        }
+    val chipColor = when (difficulty) {
+        DifficultyPreset.EASY -> Color(0xFF1B5E20)
+        DifficultyPreset.MEDIUM -> Color(0xFF0D47A1)
+        DifficultyPreset.DIFFICULT -> Color(0xFFE65100)
+        DifficultyPreset.HEAVY_METAL -> Color(0xFFB71C1C)
+        else -> Color(0xFF263238)
+    }
 
-        Surface(
-            shape = RoundedCornerShape(4.dp),
-            color = chipColor
-        ) {
-            Text(
-                text = "${difficulty.name.uppercase()} (${difficulty.difficultyValue})",
-                color = Color.White,
-                fontSize = 9.sp,
-                fontWeight = FontWeight.Bold,
-                fontFamily = FontFamily.Monospace,
-                modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
-            )
-        }
+    Surface(
+        shape = RoundedCornerShape(4.dp),
+        color = chipColor,
+        modifier = modifier.testTag("raptor_difficulty_chip")
+    ) {
+        Text(
+            text = "${difficulty.name.uppercase()} (${difficulty.difficultyValue})",
+            color = Color.White,
+            fontSize = 9.sp,
+            fontWeight = FontWeight.Bold,
+            fontFamily = FontFamily.Monospace,
+            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+        )
     }
 }
 
@@ -270,6 +315,117 @@ fun RaptorIntegrityGauges(
             maxValue = 100f,
             activeColor = if (hullHp > 40f) Color(0xFF00E676) else Color(0xFFFF3D00),
             backgroundColor = Color(0xFF2E1500)
+        )
+    }
+}
+
+/**
+ * Left Lateral Wing in Landscape mode (houses HUD integrity metrics + Auto-Fire toggle button + Weapon Switch).
+ */
+@Composable
+fun RaptorLandscapeLeftWing(
+    shieldHp: Float,
+    hullHp: Float,
+    autoFireBtn: ArcadeButtonConfig,
+    weaponBtn: ArcadeButtonConfig? = null,
+    modifier: Modifier = Modifier
+) {
+    val buttonList = mutableListOf(autoFireBtn.copy(widthDp = 108.dp, weight = null))
+    weaponBtn?.let { buttonList.add(it.copy(widthDp = 108.dp, weight = null)) }
+
+    ArcadeWingPillar(
+        width = 124.dp,
+        title = "SYSTEMS",
+        titleColor = Color(0xFF80DEEA),
+        borderColor = Color(0x3300E5FF),
+        header = {
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                modifier = Modifier.padding(top = 4.dp)
+            ) {
+                Text(
+                    text = "INTEGRITY",
+                    fontSize = 9.sp,
+                    fontWeight = FontWeight.Bold,
+                    fontFamily = FontFamily.Monospace,
+                    color = Color(0xFF80DEEA)
+                )
+                Spacer(modifier = Modifier.height(6.dp))
+                RaptorIntegrityGauges(shieldHp = shieldHp, hullHp = hullHp)
+            }
+        },
+        buttons = buttonList,
+        modifier = modifier
+    )
+}
+
+/**
+ * Right Lateral Wing in Landscape mode (houses tactical actions: Missiles, Mega-Bomb, Pause).
+ */
+@Composable
+fun RaptorLandscapeRightWing(
+    missileBtn: ArcadeButtonConfig,
+    bombBtn: ArcadeButtonConfig,
+    pauseBtn: ArcadeButtonConfig,
+    modifier: Modifier = Modifier
+) {
+    ArcadeWingPillar(
+        width = 124.dp,
+        title = "TACTICAL",
+        titleColor = Color(0xFFFF80AB),
+        borderColor = Color(0x33FF4081),
+        header = {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 4.dp, vertical = 2.dp),
+                horizontalArrangement = Arrangement.End
+            ) {
+                TactileArcadeButton(config = pauseBtn)
+            }
+        },
+        buttons = listOf(
+            missileBtn.copy(widthDp = 108.dp, weight = null),
+            bombBtn.copy(widthDp = 108.dp, weight = null)
+        ),
+        modifier = modifier
+    )
+}
+
+/**
+ * Full Split Wings Arcade Deck for Landscape mode.
+ */
+@Composable
+fun RaptorSplitWingsDeck(
+    shieldHp: Float,
+    hullHp: Float,
+    autoFireBtn: ArcadeButtonConfig,
+    missileBtn: ArcadeButtonConfig,
+    bombBtn: ArcadeButtonConfig,
+    pauseBtn: ArcadeButtonConfig,
+    weaponBtn: ArcadeButtonConfig? = null,
+    modifier: Modifier = Modifier
+) {
+    Row(
+        modifier = modifier
+            .fillMaxSize()
+            .padding(horizontal = 6.dp, vertical = 4.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        RaptorLandscapeLeftWing(
+            shieldHp = shieldHp,
+            hullHp = hullHp,
+            autoFireBtn = autoFireBtn,
+            weaponBtn = weaponBtn
+        )
+
+        Spacer(modifier = Modifier.weight(1f))
+
+        RaptorLandscapeRightWing(
+            missileBtn = missileBtn,
+            bombBtn = bombBtn,
+            pauseBtn = pauseBtn
         )
     }
 }

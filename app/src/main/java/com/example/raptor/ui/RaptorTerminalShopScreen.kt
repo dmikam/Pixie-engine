@@ -41,20 +41,15 @@ import com.pixie.engine.core.ports.AudioEvent
 data class ArmoryItem(
     val id: String,
     val name: String,
-    val category: String, // "SELECTABLE", "PRIMARY", "AIR-TO-AIR", "DEFENSIVE", "CYBER PERK"
+    val category: String,
     val description: String,
     val cost: Long,
-    val iconRes: Int,
+    val iconRes: Int? = null,
     val weaponId: String? = null,
     val isPerk: Boolean = false,
     val isConsumable: Boolean = false
 )
 
-/**
- * Authentic graphical Hangar & Supply Depot Computer Terminal ("HDF MAIN DISPLAY").
- *
- * Orchestrates armory transactions, category tabs, CRT preview cards, and pilot status.
- */
 @Composable
 fun RaptorTerminalShopScreen(
     coordinator: RaptorGameCoordinator,
@@ -66,12 +61,11 @@ fun RaptorTerminalShopScreen(
     val ship = coordinator.playerShip
     val context = coordinator.engine.context
     val catalog = remember { createArmoryCatalog() }
-
     var selectedTab by remember { mutableStateOf(TerminalTab.ALL) }
     var selectedIndex by remember { mutableIntStateOf(0) }
     var isBuyMode by remember { mutableStateOf(true) }
 
-    val filteredCatalog = remember(selectedTab) {
+    val filtered = remember(selectedTab) {
         when (selectedTab) {
             TerminalTab.ALL -> catalog
             TerminalTab.WEAPONS -> catalog.filter { it.weaponId != null }
@@ -79,158 +73,148 @@ fun RaptorTerminalShopScreen(
             TerminalTab.PERKS -> catalog.filter { it.isPerk }
         }
     }
+    val safeIndex = selectedIndex.coerceIn(0, (filtered.size - 1).coerceAtLeast(0))
+    val currentItem = filtered.getOrElse(safeIndex) { catalog.first() }
+    val crtPulse by rememberCrtPulse()
+    val countOwned = getOwnershipCount(currentItem, coordinator, ship, context)
+    val isAlreadyOwned = currentItem.weaponId != null && coordinator.unlockedWeapons.contains(currentItem.weaponId)
+    val isEquipped = currentItem.weaponId != null && coordinator.activeWeaponId == currentItem.weaponId
+    val canAfford = context.credits >= currentItem.cost || isAlreadyOwned
 
-    val safeIndex = selectedIndex.coerceIn(0, (filteredCatalog.size - 1).coerceAtLeast(0))
-    val currentItem = filteredCatalog.getOrElse(safeIndex) { catalog.first() }
+    TerminalShopContent(
+        coordinator, audioAdapter, onLaunchCombat, onBackToTitle, selectedTab, isBuyMode,
+        canAfford, currentItem, countOwned, isAlreadyOwned, isEquipped, crtPulse,
+        onSelectTab = { selectedTab = it; selectedIndex = 0 },
+        onToggleBuy = { isBuyMode = it },
+        onPrev = { selectedIndex = if (safeIndex > 0) safeIndex - 1 else filtered.size - 1 },
+        onNext = { selectedIndex = (safeIndex + 1) % filtered.size },
+        modifier = modifier
+    )
+}
 
-    val infiniteTransition = rememberInfiniteTransition(label = "crt_flicker")
-    val crtPulse by infiniteTransition.animateFloat(
-        initialValue = 0.94f,
-        targetValue = 1.0f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(800, easing = FastOutSlowInEasing),
-            repeatMode = RepeatMode.Reverse
-        ),
+@Composable
+private fun rememberCrtPulse(): androidx.compose.runtime.State<Float> {
+    val transition = rememberInfiniteTransition(label = "crt_flicker")
+    return transition.animateFloat(
+        initialValue = 0.94f, targetValue = 1.0f,
+        animationSpec = infiniteRepeatable(animation = tween(800, easing = FastOutSlowInEasing), repeatMode = RepeatMode.Reverse),
         label = "crt_alpha"
     )
+}
 
-    val countOwned = getOwnershipCount(currentItem, ship, context)
-    val canAfford = context.credits >= currentItem.cost
-
-    Box(
-        modifier = modifier
-            .fillMaxSize()
-            .background(Color(0xFF0C1017))
-            .statusBarsPadding()
-    ) {
+@Composable
+private fun TerminalShopContent(
+    coordinator: RaptorGameCoordinator,
+    audio: AndroidSoundPoolAudioAdapter?,
+    onLaunch: () -> Unit,
+    onBack: () -> Unit,
+    selectedTab: TerminalTab,
+    isBuyMode: Boolean,
+    canAfford: Boolean,
+    item: ArmoryItem,
+    countOwned: Int,
+    isAlreadyOwned: Boolean,
+    isEquipped: Boolean,
+    crtPulse: Float,
+    onSelectTab: (TerminalTab) -> Unit,
+    onToggleBuy: (Boolean) -> Unit,
+    onPrev: () -> Unit,
+    onNext: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Box(modifier = modifier.fillMaxSize().background(Color(0xFF0C1017)).statusBarsPadding()) {
         Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(horizontal = 12.dp, vertical = 6.dp)
-                .verticalScroll(rememberScrollState()),
+            modifier = Modifier.fillMaxSize().padding(horizontal = 12.dp, vertical = 6.dp).verticalScroll(rememberScrollState()),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             TerminalTopBar(
-                onBackClick = {
-                    audioAdapter?.playSound(AudioEvent.BUTTON_CLICK)
-                    onBackToTitle()
-                },
-                onFlyClick = {
-                    audioAdapter?.playSound(AudioEvent.POWERUP_PICKUP)
-                    onLaunchCombat()
-                }
+                onBackClick = { audio?.playSound(AudioEvent.BUTTON_CLICK); onBack() },
+                onFlyClick = { audio?.playSound(AudioEvent.POWERUP_PICKUP); onLaunch() }
             )
-
             Spacer(modifier = Modifier.height(6.dp))
-
-            TerminalTabHeader(
-                selectedTab = selectedTab,
-                onTabSelected = { newTab ->
-                    audioAdapter?.playSound(AudioEvent.BUTTON_CLICK)
-                    selectedTab = newTab
-                    selectedIndex = 0
-                }
-            )
-
+            TerminalTabHeader(selectedTab = selectedTab, onTabSelected = { audio?.playSound(AudioEvent.BUTTON_CLICK); onSelectTab(it) })
             Spacer(modifier = Modifier.height(6.dp))
-
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .background(Color(0xFF1E2530), RoundedCornerShape(10.dp))
-                    .border(2.dp, Color(0xFF37474F), RoundedCornerShape(10.dp))
-                    .padding(8.dp),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                TerminalPilotStatusHeader(
-                    credits = context.credits,
-                    hull = ship.hull,
-                    shield = ship.shield
-                )
-
-                Box(modifier = Modifier.weight(1f)) {
-                    when {
-                        currentItem.isPerk -> TerminalPerkCard(
-                            item = currentItem,
-                            isInstalled = countOwned > 0,
-                            crtPulse = crtPulse
-                        )
-                        currentItem.isConsumable -> TerminalSupplyCard(
-                            item = currentItem,
-                            stockCount = countOwned,
-                            crtPulse = crtPulse
-                        )
-                        else -> TerminalWeaponCard(
-                            item = currentItem,
-                            countOwned = countOwned,
-                            crtPulse = crtPulse
-                        )
-                    }
-                }
-            }
-
+            TerminalItemPreviewRow(coordinator, item, countOwned, crtPulse)
             Spacer(modifier = Modifier.height(8.dp))
-
             TerminalControlDeck(
-                isBuyMode = isBuyMode,
-                onToggleBuyMode = { mode ->
-                    audioAdapter?.playSound(AudioEvent.BUTTON_CLICK)
-                    isBuyMode = mode
-                },
-                canAfford = canAfford,
-                currentItem = currentItem,
-                onPrevItem = {
-                    audioAdapter?.playSound(AudioEvent.BUTTON_CLICK)
-                    selectedIndex = if (safeIndex > 0) safeIndex - 1 else filteredCatalog.size - 1
-                },
-                onNextItem = {
-                    audioAdapter?.playSound(AudioEvent.BUTTON_CLICK)
-                    selectedIndex = (safeIndex + 1) % filteredCatalog.size
-                },
+                isBuyMode = isBuyMode, onToggleBuyMode = { audio?.playSound(AudioEvent.BUTTON_CLICK); onToggleBuy(it) },
+                canAfford = canAfford, currentItem = item,
+                isAlreadyOwned = isAlreadyOwned, isEquipped = isEquipped,
+                onPrevItem = { audio?.playSound(AudioEvent.BUTTON_CLICK); onPrev() },
+                onNextItem = { audio?.playSound(AudioEvent.BUTTON_CLICK); onNext() },
                 onActionClick = {
-                    if (isBuyMode) {
-                        handlePurchase(currentItem, canAfford, coordinator, audioAdapter)
-                    } else {
-                        handleSale(currentItem, countOwned, coordinator, audioAdapter)
-                    }
+                    if (isBuyMode) handlePurchase(item, canAfford, coordinator, audio)
+                    else handleSale(item, countOwned, coordinator, audio)
                 }
             )
-
             Spacer(modifier = Modifier.height(10.dp))
-
-            TerminalScrambleButton(
-                onLaunchCombat = {
-                    audioAdapter?.playSound(AudioEvent.POWERUP_PICKUP)
-                    onLaunchCombat()
-                }
-            )
-
+            TerminalScrambleButton(onLaunchCombat = { audio?.playSound(AudioEvent.POWERUP_PICKUP); onLaunch() })
             Spacer(modifier = Modifier.height(8.dp))
         }
     }
 }
 
-private fun handlePurchase(
-    item: ArmoryItem,
-    canAfford: Boolean,
+@Composable
+private fun TerminalItemPreviewRow(
     coordinator: RaptorGameCoordinator,
-    audioAdapter: AndroidSoundPoolAudioAdapter?
+    item: ArmoryItem,
+    countOwned: Int,
+    crtPulse: Float
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth().background(Color(0xFF1E2530), RoundedCornerShape(10.dp))
+            .border(2.dp, Color(0xFF37474F), RoundedCornerShape(10.dp)).padding(8.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        TerminalPilotStatusHeader(coordinator.engine.context.credits, coordinator.playerShip.hull, coordinator.playerShip.shield)
+        Box(modifier = Modifier.weight(1f)) {
+            when {
+                item.isPerk -> TerminalPerkCard(item, countOwned > 0, crtPulse)
+                item.isConsumable -> TerminalSupplyCard(item, countOwned, crtPulse)
+                else -> TerminalWeaponCard(item, countOwned, crtPulse)
+            }
+        }
+    }
+}
+
+private fun handlePurchase(
+    item: ArmoryItem, canAfford: Boolean, coordinator: RaptorGameCoordinator, audioAdapter: AndroidSoundPoolAudioAdapter?
 ) {
     val context = coordinator.engine.context
     val ship = coordinator.playerShip
+
+    // If already owned, equipping is free!
+    if (item.weaponId != null && coordinator.unlockedWeapons.contains(item.weaponId)) {
+        coordinator.switchWeapon(item.weaponId)
+        audioAdapter?.playSound(AudioEvent.POWERUP_PICKUP)
+        return
+    }
+
     if (canAfford) {
         context.spendCredits(item.cost)
         audioAdapter?.playSound(AudioEvent.POWERUP_PICKUP)
         when (item.id) {
-            "odin_laser" -> ship.equipWeapon("odin_laser")
-            "deathray" -> ship.equipWeapon("deathray")
-            "twin_plasma" -> ship.equipWeapon("twin_plasma")
-            "vulcan_upgrade" -> ship.upgradeWeapon()
-            "missiles_pack" -> ship.addMissiles(4)
-            "mega_bomb" -> ship.addBomb(1)
+            "odin_laser" -> coordinator.unlockWeapon("odin_laser")
+            "deathray" -> coordinator.unlockWeapon("deathray")
+            "twin_plasma" -> coordinator.unlockWeapon("twin_plasma")
+            "vulcan_upgrade" -> {
+                ship.upgradeWeapon()
+                coordinator.savedWeaponTier = ship.weaponTier
+            }
+            "missiles_pack" -> {
+                ship.addMissiles(4)
+                coordinator.savedMissiles = ship.missileSalvoes
+            }
+            "mega_bomb" -> {
+                ship.addBomb(1)
+                coordinator.savedBombs = ship.megaBombs
+            }
             "ion_shield" -> ship.rechargeShield(40f)
             "hull_repair" -> ship.repairHull(35f)
-            "magnet_beam" -> context.addPerk("MAGNET_BEAM")
+            "magnet_beam" -> {
+                coordinator.persistentPerks.add("MAGNET_BEAM")
+                context.addPerk("MAGNET_BEAM")
+            }
         }
     } else {
         audioAdapter?.playSound(AudioEvent.HIT)
@@ -238,10 +222,7 @@ private fun handlePurchase(
 }
 
 private fun handleSale(
-    item: ArmoryItem,
-    countOwned: Int,
-    coordinator: RaptorGameCoordinator,
-    audioAdapter: AndroidSoundPoolAudioAdapter?
+    item: ArmoryItem, countOwned: Int, coordinator: RaptorGameCoordinator, audioAdapter: AndroidSoundPoolAudioAdapter?
 ) {
     val context = coordinator.engine.context
     val ship = coordinator.playerShip
@@ -250,105 +231,80 @@ private fun handleSale(
         context.earnCredits(refund)
         audioAdapter?.playSound(AudioEvent.COLLECT)
         when (item.id) {
-            "missiles_pack" -> if (ship.missileSalvoes >= 4) ship.missileSalvoes -= 4
-            "mega_bomb" -> if (ship.megaBombs > 0) ship.megaBombs--
+            "missiles_pack" -> if (ship.missileSalvoes >= 4) {
+                ship.missileSalvoes -= 4
+                coordinator.savedMissiles = ship.missileSalvoes
+            }
+            "mega_bomb" -> if (ship.megaBombs > 0) {
+                ship.megaBombs--
+                coordinator.savedBombs = ship.megaBombs
+            }
         }
     }
 }
 
-private fun getOwnershipCount(item: ArmoryItem, ship: RaptorShip, context: GameContext): Int = when (item.id) {
-    "odin_laser" -> if (ship.activeWeaponId == "odin_laser") 1 else 0
-    "deathray" -> if (ship.activeWeaponId == "deathray") 1 else 0
-    "twin_plasma" -> if (ship.activeWeaponId == "twin_plasma") 1 else 0
+private fun getOwnershipCount(
+    item: ArmoryItem,
+    coordinator: RaptorGameCoordinator,
+    ship: RaptorShip,
+    context: GameContext
+): Int = when (item.id) {
+    "odin_laser" -> if (coordinator.unlockedWeapons.contains("odin_laser")) 1 else 0
+    "deathray" -> if (coordinator.unlockedWeapons.contains("deathray")) 1 else 0
+    "twin_plasma" -> if (coordinator.unlockedWeapons.contains("twin_plasma")) 1 else 0
     "vulcan_upgrade" -> ship.weaponTier
     "missiles_pack" -> ship.missileSalvoes
     "mega_bomb" -> ship.megaBombs
     "ion_shield" -> (ship.shield / 25f).toInt()
     "hull_repair" -> (ship.hull / 25f).toInt()
-    "magnet_beam" -> if (context.hasPerk("MAGNET_BEAM")) 1 else 0
+    "magnet_beam" -> if (context.hasPerk("MAGNET_BEAM") || coordinator.persistentPerks.contains("MAGNET_BEAM")) 1 else 0
     else -> 0
 }
 
 private fun createArmoryCatalog(): List<ArmoryItem> = listOf(
     ArmoryItem(
-        id = "odin_laser",
-        name = "LASER TURRET",
-        category = "SELECTABLE",
+        id = "odin_laser", name = "LASER TURRET", category = "SELECTABLE",
         description = "THE OD55 ODIN LASER TURRET IS A PILOT'S BEST CHOICE FOR AIR COMBAT. SIMILAR TO THE TH19 THOR, THE ODIN HAS A FASTER RESPONSE TIME WITH THE LASER'S INCREASED FIREPOWER.",
-        cost = 1200L,
-        iconRes = R.drawable.raptor_terminal_laser,
-        weaponId = "odin_laser"
+        cost = 1200L, iconRes = R.drawable.raptor_terminal_laser, weaponId = "odin_laser"
     ),
     ArmoryItem(
-        id = "deathray",
-        name = "DEATHRAY",
-        category = "SELECTABLE",
-        description = "THE MSIL-ATLAS IS ONE OF THE MOST POWERFUL WEAPONS AVAILABLE. EMITTING A PARTICLE STREAM AT INCREDIBLE SPEEDS, ITS AWESOME FIREPOWER IS USUALLY ENOUGH TO DESTROY MOST TARGETS IN ONE SHOT.",
-        cost = 2500L,
-        iconRes = R.drawable.raptor_terminal_deathray,
-        weaponId = "deathray"
+        id = "deathray", name = "DEATHRAY CANNON", category = "SELECTABLE",
+        description = "HIGH-ENERGY CONCENTRATED BEAM EMITTER. TEARS THROUGH CAPITAL CLASS INTERCEPTORS AND HEAVY BARRICADES IN FRACTIONS OF A SECOND.",
+        cost = 2400L, iconRes = R.drawable.raptor_terminal_deathray, weaponId = "deathray"
     ),
     ArmoryItem(
-        id = "vulcan_upgrade",
-        name = "VULCAN AUTOCANNON",
-        category = "PRIMARY",
-        description = "HEAVY HIGH-VELOCITY ARMOR-PIERCING KINETIC ROUNDS. EXCELLENT FOR CONTINUOUS SUSTAINED SUPPRESSION FIRE AGAINST AIR SQUADRONS AND GROUND INSTALLATIONS.",
-        cost = 500L,
-        iconRes = R.drawable.raptor_terminal_laser,
-        weaponId = "vulcan"
+        id = "twin_plasma", name = "TWIN PLASMA", category = "SELECTABLE",
+        description = "RAPID DUAL ION-PLASMA DISCHARGERS PROVIDING MAXIMUM CLOSE-QUARTERS SPREAD TO ANNIHILATE INCOMING RECON FIGHTER WAVES.",
+        cost = 1800L, iconRes = null, weaponId = "twin_plasma"
     ),
     ArmoryItem(
-        id = "twin_plasma",
-        name = "TWIN PLASMA SPREADER",
-        category = "SELECTABLE",
-        description = "DUAL HIGH-ENERGY ION PLASMA BOLTS FIRED IN SPREAD TRAJECTORY. DEVASTATES ADVANCING ENEMY FORMATIONS WITH OVERLAPPING CONES OF DESTRUCTIVE FIRE.",
-        cost = 900L,
-        iconRes = R.drawable.raptor_terminal_laser,
-        weaponId = "twin_plasma"
+        id = "vulcan_upgrade", name = "CANNON TIER UPGRADE", category = "UPGRADE",
+        description = "BOOSTS DEFAULT VULCAN CANNON TIER (+1 BARREL AND ELEVATED MUZZLE VELOCITY). MAX UPGRADE CAPACITY: TIER 4.",
+        cost = 800L, isConsumable = true
     ),
     ArmoryItem(
-        id = "missiles_pack",
-        name = "MICRO-HOMING MISSILES",
-        category = "AIR-TO-AIR",
-        description = "SMART LOCK-ON TARGETING ORDNANCE. AUTOMATICALLY TRACKS AND PURSUES ENEMY FIGHTERS AND HEAVY DREADNOUGHTS ACROSS THE ENTIRE COMBAT AIRSPACE.",
-        cost = 400L,
-        iconRes = R.drawable.raptor_terminal_laser,
-        isConsumable = true
+        id = "missiles_pack", name = "AIR-TO-AIR MISSILES", category = "AMMUNITION",
+        description = "CARGO POD CONTAINING 4 SEEKER MISSILES. AUTOMATICALLY LOCKS ONTO THE CLOSEST ENEMY INTERCEPTOR OR DREADNOUGHT BOSS.",
+        cost = 450L, isConsumable = true
     ),
     ArmoryItem(
-        id = "mega_bomb",
-        name = "MEGA-BOMB DISRUPTOR",
-        category = "AIR-TO-GROUND",
-        description = "TACTICAL EMP ATOMIC RESONANCE SHOCKWAVE. CLEARS INCOMING HOSTILE BULLETS AND DISINTEGRATES ALL VISIBLE THREATS ON SCREEN.",
-        cost = 800L,
-        iconRes = R.drawable.raptor_terminal_deathray,
-        isConsumable = true
+        id = "mega_bomb", name = "TACTICAL MEGA-BOMB", category = "AMMUNITION",
+        description = "ELECTRO-MAGNETIC HIGH-OCTANE CANISTER. VAPORIZES ALL VISIBLE HOSTILE ORDNANCE AND HEAVILY DAMAGES AIR AND GROUND HOSTILES.",
+        cost = 900L, isConsumable = true
     ),
     ArmoryItem(
-        id = "ion_shield",
-        name = "ION SHIELD CELL",
-        category = "DEFENSIVE",
-        description = "HIGH-CAPACITY ELECTROMAGNETIC FORCEFIELD CELLS. RECHARGES SHIELD EMITTERS TO ABSORB HOSTILE LASER AND PROJECTILE DAMAGE.",
-        cost = 350L,
-        iconRes = R.drawable.raptor_terminal_laser,
-        isConsumable = true
+        id = "ion_shield", name = "SHIELD OVERCHARGE", category = "DEFENSE",
+        description = "RECHARGES ENERGY SHIELDING BY 40 UNITS UP TO MAXIMUM OVERCHARGE CAPACITY.",
+        cost = 350L, isConsumable = true
     ),
     ArmoryItem(
-        id = "hull_repair",
-        name = "TITANIUM HULL REPAIR",
-        category = "DEFENSIVE",
-        description = "REINFORCED TITANIUM COMPOSITE ARMOR PLATING. REPAIRS STRUCTURAL INTEGRITY TO ENSURE SURVIVAL AGAINST PROLONGED COMBAT STRESS.",
-        cost = 300L,
-        iconRes = R.drawable.raptor_terminal_deathray,
-        isConsumable = true
+        id = "hull_repair", name = "HULL REINFORCEMENT", category = "DEFENSE",
+        description = "RESTORES STRUCTURAL TITANIUM HULL ARMOR BY 35 INTEGRITY POINTS.",
+        cost = 400L, isConsumable = true
     ),
     ArmoryItem(
-        id = "magnet_beam",
-        name = "MAGNETIC BEAM TRACTOR",
-        category = "CYBER PERK",
-        description = "GRAVITATIONAL TRACTOR FIELD EMITTER. AUTOMATICALLY PULLS FLOATING CREDIT CONTAINERS, REPAIR PODS, AND WEAPON UPGRADES DIRECTLY TO THE FIGHTER.",
-        cost = 600L,
-        iconRes = R.drawable.raptor_terminal_laser,
-        isPerk = true
+        id = "magnet_beam", name = "PERK: MAGNET BEAM", category = "PERMANENT PERK",
+        description = "EQUIPS PASSIVE TRACTOR ATTRACTOR BEAM. COLLECTIBLE CARGO AND SCORE PODS GRAVITATE TOWARDS SHIP AUTOMATICALLY.",
+        cost = 1500L, isPerk = true
     )
 )

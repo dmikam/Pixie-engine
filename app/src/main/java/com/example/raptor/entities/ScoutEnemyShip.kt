@@ -7,8 +7,8 @@ import com.pixie.engine.core.sprite.AnimationSequence
 import com.pixie.engine.core.sprite.PixelSprite
 import com.pixie.engine.core.weapon.ProjectilePool
 import com.pixie.engine.core.weapon.StandardWeapons
+import com.pixie.engine.core.weapon.Trajectory
 import com.pixie.engine.core.weapon.WeaponSystem
-import kotlin.math.sin
 
 /**
  * Scout Craft: Swift delta-wing reconnaissance fighter.
@@ -40,14 +40,25 @@ class ScoutEnemyShip(
     override val explosionType: ExplosionType = ExplosionType.AERIAL_EXPLOSION
     override val explosionScale: Float = 1.0f
 
+    val trajectory: Trajectory = Trajectory.SineWave(
+        baseAngleRad = 1.5707963f,
+        frequency = 1.8f,
+        amplitude = 18f
+    )
+
     init {
         setAnimation("default", AnimationSequence.singleFrame(SPRITE_SCOUT))
         playAnimation("default")
     }
 
     override fun calculateFlightVelocity(speed: Float): Vec2 {
-        // Swift straight downward run with slight gentle drift
-        return Vec2(sin((flightTime + flightSeed) * 1.8f) * 18f, speed)
+        return trajectory.computeVelocity(
+            currentPosition = position,
+            currentVelocity = velocity,
+            flightTime = flightTime + flightSeed,
+            speed = speed,
+            dt = 0f
+        )
     }
 
     override fun getNextShootCooldown(): Float = 5.0f

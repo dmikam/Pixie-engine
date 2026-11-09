@@ -110,41 +110,59 @@ private fun DinoPauseDialogContent(
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             DinoPauseHeader()
-
             Spacer(modifier = Modifier.height(14.dp))
-
-            DinoWorldSelector(
+            DinoPauseSettingsSections(
                 currentWorld = currentWorld,
                 availableWorlds = availableWorlds,
-                onSelectWorld = onSelectWorld
-            )
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            DinoAudioHapticSettings(
-                isSoundEnabled = isSoundEnabled,
-                isHapticEnabled = isHapticEnabled,
-                onToggleSound = onToggleSound,
-                onToggleHaptic = onToggleHaptic
-            )
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            DinoLayerInspector(
                 layers = layers,
                 layerStates = layerStates,
                 layerGridStates = layerGridStates,
+                isSoundEnabled = isSoundEnabled,
+                isHapticEnabled = isHapticEnabled,
+                onToggleSound = onToggleSound,
+                onToggleHaptic = onToggleHaptic,
+                onSelectWorld = onSelectWorld,
                 onToggleLayer = onToggleLayer,
                 onToggleGrid = onToggleGrid
             )
-
             Spacer(modifier = Modifier.height(20.dp))
-
-            DinoPauseActions(
-                onResume = onResume,
-                onRestart = onRestart,
-                onExitToMenu = onExitToMenu
-            )
+            DinoPauseActions(onResume = onResume, onRestart = onRestart, onExitToMenu = onExitToMenu)
         }
     }
 }
+
+@Composable
+private fun DinoPauseSettingsSections(
+    currentWorld: WorldDefinition,
+    availableWorlds: List<WorldDefinition>,
+    layers: List<PixieLayer>,
+    layerStates: Map<String, Boolean>,
+    layerGridStates: Map<String, Boolean>,
+    isSoundEnabled: Boolean,
+    isHapticEnabled: Boolean,
+    onToggleSound: (Boolean) -> Unit,
+    onToggleHaptic: (Boolean) -> Unit,
+    onSelectWorld: (WorldDefinition) -> Unit,
+    onToggleLayer: (String, Boolean) -> Unit,
+    onToggleGrid: (String, Boolean) -> Unit
+) {
+    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+        DinoWorldSelector(currentWorld = currentWorld, availableWorlds = availableWorlds, onSelectWorld = onSelectWorld)
+        Spacer(modifier = Modifier.height(16.dp))
+        DinoAudioHapticSettings(
+            isSoundEnabled = isSoundEnabled,
+            isHapticEnabled = isHapticEnabled,
+            onToggleSound = onToggleSound,
+            onToggleHaptic = onToggleHaptic
+        )
+        Spacer(modifier = Modifier.height(16.dp))
+        DinoLayerInspector(
+            layers = layers,
+            layerStates = layerStates,
+            layerGridStates = layerGridStates,
+            onToggleLayer = onToggleLayer,
+            onToggleGrid = onToggleGrid
+        )
+    }
+}
+

@@ -21,6 +21,11 @@ class Particle : Poolable {
     var alpha: Float = 1.0f
     var isAlive: Boolean = false
 
+    var isTumbling: Boolean = false
+    var tumbleTimer: Float = 0f
+    var renderWidth: Float = 0f
+    var renderHeight: Float = 0f
+
     fun spawn(
         pos: Vec2,
         vel: Vec2,
@@ -43,6 +48,10 @@ class Particle : Poolable {
         currentColor = startClr
         alpha = 1.0f
         isAlive = true
+        isTumbling = false
+        tumbleTimer = 0f
+        renderWidth = particleSize
+        renderHeight = particleSize
     }
 
     /**
@@ -72,6 +81,20 @@ class Particle : Poolable {
         alpha = (1.0f - progress).coerceIn(0f, 1f)
         currentColor = interpolateColor(startColor, endColor, progress)
 
+        if (isTumbling) {
+            tumbleTimer += dt
+            val phase = ((tumbleTimer / 0.08f).toInt()) % 4
+            when (phase) {
+                0 -> { renderWidth = size; renderHeight = size }
+                1 -> { renderWidth = (size * 0.5f).coerceAtLeast(1f); renderHeight = size }
+                2 -> { renderWidth = size; renderHeight = (size * 0.5f).coerceAtLeast(1f) }
+                3 -> { renderWidth = (size * 0.75f).coerceAtLeast(1f); renderHeight = (size * 0.75f).coerceAtLeast(1f) }
+            }
+        } else {
+            renderWidth = size
+            renderHeight = size
+        }
+
         return true
     }
 
@@ -88,6 +111,10 @@ class Particle : Poolable {
         currentColor = 0xFFFFFFFF.toInt()
         alpha = 1.0f
         isAlive = false
+        isTumbling = false
+        tumbleTimer = 0f
+        renderWidth = 0f
+        renderHeight = 0f
     }
 
     companion object {

@@ -53,15 +53,17 @@ Explore the topic guides below to start building your game:
 | **[Cookbook: First 2D Game](cookbook.md)** | Step-by-step complete tutorial: Build "Gem Catcher", a working 2D arcade game from scratch in under 80 lines. |
 | **[Audit Rules & Guidelines](audit/rules.md)** | Project quality audit standards, 0–10 category scoring rubrics, AGENTS.md compliance checks, and report formats. |
 | **[Roadmap Execution Prompt](audit/prompt.md)** | Copy-paste prompt ready for advancing exactly one task in the audit roadmap per chat session. |
+| **[Platformer Plan & Tracker](platformer/current_state.md)** | Step-by-step master plan and execution prompt for PoC 4: Super Pixie (Super Mario & Chip 'n Dale 2 NES homage). |
 
 ---
 
 ## 🎮 Reference Proof-of-Concepts (PoCs)
 
-The repository includes three fully completed reference games demonstrating the engine across distinct paradigms:
+The repository demonstrates the engine across distinct 2D paradigms:
 - **[Dinorun](roadmap.md#1--dinorun-horizontal-endless-scroller--closed)**: Horizontal endless runner featuring 5-layer parallax, procedural chunk generation, and real-time color recovery.
 - **[Raptor](roadmap.md#2--raptor-vertical-arcade-scroller--closed)**: Vertical top-down combat shmup featuring high-density bullet pools, homing missiles, procedural particle explosions, ground destructibles, and multi-stage boss encounters.
 - **[Arkanoid](roadmap.md#3--arkanoid-fixed-screen-brick-breaker--closed)**: Fixed-screen brick breaker featuring continuous collision detection (CCD), destructible matrix layer, bounce angle physics, and falling power capsules.
+- **[Super Pixie](roadmap.md#4--super-pixie-classic-nes-2d-platformer--next-up)**: Classic NES 2D platformer with momentum running, head-bonk '?' blocks, breakable bricks, enemy stomping, and Chip 'n Dale crate throwing *(In Progress - v0.7)*.
 
 ---
 

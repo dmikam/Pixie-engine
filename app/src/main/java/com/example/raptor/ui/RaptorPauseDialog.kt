@@ -67,51 +67,50 @@ fun RaptorPauseDialog(
             shape = RoundedCornerShape(16.dp),
             colors = CardDefaults.cardColors(containerColor = Color(0xFF161A22)),
             border = BorderStroke(1.5.dp, Color(0xFFFF9100)),
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp)
+            modifier = Modifier.fillMaxWidth().padding(16.dp)
         ) {
-            Column(
-                modifier = Modifier.padding(20.dp),
-                horizontalAlignment = Alignment.CenterHorizontally
-            ) {
-                Text(
-                    text = "TACTICAL PAUSE",
-                    color = Color(0xFFFF9100),
-                    fontSize = 18.sp,
-                    fontWeight = FontWeight.Black,
-                    fontFamily = FontFamily.Monospace
-                )
-
-                Spacer(modifier = Modifier.height(14.dp))
-                RaptorDifficultySelector(
-                    selectedDifficulty = selectedDifficulty,
-                    onSelectDifficulty = onSelectDifficulty
-                )
-
-                Spacer(modifier = Modifier.height(14.dp))
-                RaptorLevelSelector(
-                    currentLevel = currentLevel,
-                    onSelectLevel = onSelectLevel
-                )
-
-                Spacer(modifier = Modifier.height(14.dp))
-                RaptorAudioHapticControls(
-                    isSoundEnabled = isSoundEnabled,
-                    isHapticEnabled = isHapticEnabled,
-                    onToggleSound = onToggleSound,
-                    onToggleHaptic = onToggleHaptic
-                )
-
-                Spacer(modifier = Modifier.height(18.dp))
-                RaptorPauseActionButtons(
-                    onResume = onResume,
-                    onRestart = onRestart,
-                    onGoToHangar = onGoToHangar,
-                    onExit = onExit
-                )
-            }
+            RaptorPauseContent(
+                selectedDifficulty = selectedDifficulty, isSoundEnabled = isSoundEnabled,
+                isHapticEnabled = isHapticEnabled, currentLevel = currentLevel,
+                onResume = onResume, onRestart = onRestart, onGoToHangar = onGoToHangar,
+                onToggleSound = onToggleSound, onToggleHaptic = onToggleHaptic,
+                onSelectDifficulty = onSelectDifficulty, onSelectLevel = onSelectLevel, onExit = onExit
+            )
         }
+    }
+}
+
+@Composable
+private fun RaptorPauseContent(
+    selectedDifficulty: DifficultyPreset,
+    isSoundEnabled: Boolean,
+    isHapticEnabled: Boolean,
+    currentLevel: Int,
+    onResume: () -> Unit,
+    onRestart: () -> Unit,
+    onGoToHangar: () -> Unit,
+    onToggleSound: (Boolean) -> Unit,
+    onToggleHaptic: (Boolean) -> Unit,
+    onSelectDifficulty: (DifficultyPreset) -> Unit,
+    onSelectLevel: (Int) -> Unit,
+    onExit: () -> Unit
+) {
+    Column(
+        modifier = Modifier.padding(20.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Text(
+            text = "TACTICAL PAUSE", color = Color(0xFFFF9100),
+            fontSize = 18.sp, fontWeight = FontWeight.Black, fontFamily = FontFamily.Monospace
+        )
+        Spacer(modifier = Modifier.height(14.dp))
+        RaptorDifficultySelector(selectedDifficulty, onSelectDifficulty)
+        Spacer(modifier = Modifier.height(14.dp))
+        RaptorLevelSelector(currentLevel, onSelectLevel)
+        Spacer(modifier = Modifier.height(14.dp))
+        RaptorAudioHapticControls(isSoundEnabled, isHapticEnabled, onToggleSound, onToggleHaptic)
+        Spacer(modifier = Modifier.height(18.dp))
+        RaptorPauseActionButtons(onResume, onRestart, onGoToHangar, onExit)
     }
 }
 
@@ -120,34 +119,19 @@ private fun RaptorDifficultySelector(
     selectedDifficulty: DifficultyPreset,
     onSelectDifficulty: (DifficultyPreset) -> Unit
 ) {
-    Text(
-        text = "DIFFICULTY PRESET (0..100)",
-        color = Color(0xFF90A4AE),
-        fontSize = 11.sp,
-        fontFamily = FontFamily.Monospace
-    )
+    Text(text = "DIFFICULTY PRESET (0..100)", color = Color(0xFF90A4AE), fontSize = 11.sp, fontFamily = FontFamily.Monospace)
     Spacer(modifier = Modifier.height(6.dp))
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.SpaceBetween
-    ) {
+    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
         DifficultyPreset.DEFAULT_PRESETS.forEach { preset ->
             val isSelected = preset == selectedDifficulty
             Button(
                 onClick = { onSelectDifficulty(preset) },
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = if (isSelected) Color(0xFFFF9100) else Color(0xFF263238)
-                ),
+                colors = ButtonDefaults.buttonColors(containerColor = if (isSelected) Color(0xFFFF9100) else Color(0xFF263238)),
                 shape = RoundedCornerShape(6.dp),
-                modifier = Modifier
-                    .weight(1f)
-                    .padding(horizontal = 2.dp)
-                    .height(36.dp)
+                modifier = Modifier.weight(1f).padding(horizontal = 2.dp).height(36.dp)
             ) {
                 Text(
-                    text = "${preset.difficultyValue}",
-                    fontSize = 11.sp,
-                    fontWeight = FontWeight.Bold,
+                    text = "${preset.difficultyValue}", fontSize = 11.sp, fontWeight = FontWeight.Bold,
                     color = if (isSelected) Color.Black else Color.White
                 )
             }
@@ -156,38 +140,20 @@ private fun RaptorDifficultySelector(
 }
 
 @Composable
-private fun RaptorLevelSelector(
-    currentLevel: Int,
-    onSelectLevel: (Int) -> Unit
-) {
-    Text(
-        text = "CAMPAIGN LEVEL",
-        color = Color(0xFF90A4AE),
-        fontSize = 11.sp,
-        fontFamily = FontFamily.Monospace
-    )
+private fun RaptorLevelSelector(currentLevel: Int, onSelectLevel: (Int) -> Unit) {
+    Text(text = "CAMPAIGN LEVEL", color = Color(0xFF90A4AE), fontSize = 11.sp, fontFamily = FontFamily.Monospace)
     Spacer(modifier = Modifier.height(6.dp))
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.SpaceBetween
-    ) {
+    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
         (1..3).forEach { lvl ->
             val isSelected = lvl == currentLevel
             Button(
                 onClick = { onSelectLevel(lvl) },
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = if (isSelected) Color(0xFF00E5FF) else Color(0xFF263238)
-                ),
+                colors = ButtonDefaults.buttonColors(containerColor = if (isSelected) Color(0xFF00E5FF) else Color(0xFF263238)),
                 shape = RoundedCornerShape(6.dp),
-                modifier = Modifier
-                    .weight(1f)
-                    .padding(horizontal = 2.dp)
-                    .height(36.dp)
+                modifier = Modifier.weight(1f).padding(horizontal = 2.dp).height(36.dp)
             ) {
                 Text(
-                    text = "LVL $lvl",
-                    fontSize = 11.sp,
-                    fontWeight = FontWeight.Bold,
+                    text = "LVL $lvl", fontSize = 11.sp, fontWeight = FontWeight.Bold,
                     color = if (isSelected) Color.Black else Color.White
                 )
             }
@@ -197,26 +163,17 @@ private fun RaptorLevelSelector(
 
 @Composable
 private fun RaptorAudioHapticControls(
-    isSoundEnabled: Boolean,
-    isHapticEnabled: Boolean,
-    onToggleSound: (Boolean) -> Unit,
-    onToggleHaptic: (Boolean) -> Unit
+    isSoundEnabled: Boolean, isHapticEnabled: Boolean,
+    onToggleSound: (Boolean) -> Unit, onToggleHaptic: (Boolean) -> Unit
 ) {
     Text(
-        text = "SOUND & HAPTIC RESPONSE",
-        color = Color(0xFFFF9100),
-        fontSize = 11.sp,
-        fontWeight = FontWeight.SemiBold,
-        fontFamily = FontFamily.Monospace
+        text = "SOUND & HAPTIC RESPONSE", color = Color(0xFFFF9100),
+        fontSize = 11.sp, fontWeight = FontWeight.SemiBold, fontFamily = FontFamily.Monospace
     )
     Spacer(modifier = Modifier.height(6.dp))
-
     Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .background(Color(0xFF0F131C), RoundedCornerShape(8.dp))
-            .border(1.dp, Color(0xFF263238), RoundedCornerShape(8.dp))
-            .padding(10.dp),
+        modifier = Modifier.fillMaxWidth().background(Color(0xFF0F131C), RoundedCornerShape(8.dp))
+            .border(1.dp, Color(0xFF263238), RoundedCornerShape(8.dp)).padding(10.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
         SoundToggleRow(isSoundEnabled = isSoundEnabled, onToggleSound = onToggleSound)
@@ -226,53 +183,37 @@ private fun RaptorAudioHapticControls(
 }
 
 @Composable
-private fun SoundToggleRow(
-    isSoundEnabled: Boolean,
-    onToggleSound: (Boolean) -> Unit
-) {
+private fun SoundToggleRow(isSoundEnabled: Boolean, onToggleSound: (Boolean) -> Unit) {
     Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(6.dp))
-            .clickable { onToggleSound(!isSoundEnabled) }
+        modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(6.dp)).clickable { onToggleSound(!isSoundEnabled) }
             .padding(vertical = 4.dp, horizontal = 4.dp),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically
+        horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically
     ) {
         Row(
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(10.dp),
+            verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp),
             modifier = Modifier.weight(1f)
         ) {
             Icon(
                 imageVector = if (isSoundEnabled) Icons.AutoMirrored.Filled.VolumeUp else Icons.AutoMirrored.Filled.VolumeMute,
-                contentDescription = "Combat Audio",
-                tint = if (isSoundEnabled) Color(0xFFFF9100) else Color(0xFF78909C),
+                contentDescription = "Combat Audio", tint = if (isSoundEnabled) Color(0xFFFF9100) else Color(0xFF78909C),
                 modifier = Modifier.size(22.dp)
             )
             Column {
                 Text(
-                    text = "Sound Effects (SFX)",
-                    color = if (isSoundEnabled) Color.White else Color(0xFF78909C),
-                    fontSize = 13.sp,
-                    fontWeight = FontWeight.Medium,
-                    fontFamily = FontFamily.Monospace
+                    text = "Sound Effects (SFX)", color = if (isSoundEnabled) Color.White else Color(0xFF78909C),
+                    fontSize = 13.sp, fontWeight = FontWeight.Medium, fontFamily = FontFamily.Monospace
                 )
                 Text(
                     text = if (isSoundEnabled) "Cannons, missiles, explosions" else "Audio Muted",
-                    color = if (isSoundEnabled) Color(0xFFFFB74D) else Color(0xFF546E7A),
-                    fontSize = 10.sp
+                    color = if (isSoundEnabled) Color(0xFFFFB74D) else Color(0xFF546E7A), fontSize = 10.sp
                 )
             }
         }
         Switch(
-            checked = isSoundEnabled,
-            onCheckedChange = { onToggleSound(it) },
+            checked = isSoundEnabled, onCheckedChange = { onToggleSound(it) },
             colors = SwitchDefaults.colors(
-                checkedThumbColor = Color(0xFFFF9100),
-                checkedTrackColor = Color(0xFF5D2400),
-                uncheckedThumbColor = Color(0xFF78909C),
-                uncheckedTrackColor = Color(0xFF263238)
+                checkedThumbColor = Color(0xFFFF9100), checkedTrackColor = Color(0xFF5D2400),
+                uncheckedThumbColor = Color(0xFF78909C), uncheckedTrackColor = Color(0xFF263238)
             ),
             modifier = Modifier.testTag("raptor_sound_switch")
         )
@@ -280,53 +221,36 @@ private fun SoundToggleRow(
 }
 
 @Composable
-private fun HapticToggleRow(
-    isHapticEnabled: Boolean,
-    onToggleHaptic: (Boolean) -> Unit
-) {
+private fun HapticToggleRow(isHapticEnabled: Boolean, onToggleHaptic: (Boolean) -> Unit) {
     Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(6.dp))
-            .clickable { onToggleHaptic(!isHapticEnabled) }
+        modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(6.dp)).clickable { onToggleHaptic(!isHapticEnabled) }
             .padding(vertical = 4.dp, horizontal = 4.dp),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically
+        horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically
     ) {
         Row(
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(10.dp),
+            verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp),
             modifier = Modifier.weight(1f)
         ) {
             Icon(
-                imageVector = Icons.Filled.Vibration,
-                contentDescription = "Haptic Feedback",
-                tint = if (isHapticEnabled) Color(0xFF00E5FF) else Color(0xFF78909C),
-                modifier = Modifier.size(22.dp)
+                imageVector = Icons.Filled.Vibration, contentDescription = "Haptic Feedback",
+                tint = if (isHapticEnabled) Color(0xFF00E5FF) else Color(0xFF78909C), modifier = Modifier.size(22.dp)
             )
             Column {
                 Text(
-                    text = "Haptic Response",
-                    color = if (isHapticEnabled) Color.White else Color(0xFF78909C),
-                    fontSize = 13.sp,
-                    fontWeight = FontWeight.Medium,
-                    fontFamily = FontFamily.Monospace
+                    text = "Haptic Response", color = if (isHapticEnabled) Color.White else Color(0xFF78909C),
+                    fontSize = 13.sp, fontWeight = FontWeight.Medium, fontFamily = FontFamily.Monospace
                 )
                 Text(
                     text = if (isHapticEnabled) "Vibrations on impacts & weapons" else "Haptics Disabled",
-                    color = if (isHapticEnabled) Color(0xFF80DEEA) else Color(0xFF546E7A),
-                    fontSize = 10.sp
+                    color = if (isHapticEnabled) Color(0xFF80DEEA) else Color(0xFF546E7A), fontSize = 10.sp
                 )
             }
         }
         Switch(
-            checked = isHapticEnabled,
-            onCheckedChange = { onToggleHaptic(it) },
+            checked = isHapticEnabled, onCheckedChange = { onToggleHaptic(it) },
             colors = SwitchDefaults.colors(
-                checkedThumbColor = Color(0xFF00E5FF),
-                checkedTrackColor = Color(0xFF004D40),
-                uncheckedThumbColor = Color(0xFF78909C),
-                uncheckedTrackColor = Color(0xFF263238)
+                checkedThumbColor = Color(0xFF00E5FF), checkedTrackColor = Color(0xFF004D40),
+                uncheckedThumbColor = Color(0xFF78909C), uncheckedTrackColor = Color(0xFF263238)
             ),
             modifier = Modifier.testTag("raptor_haptic_switch")
         )
@@ -334,20 +258,10 @@ private fun HapticToggleRow(
 }
 
 @Composable
-private fun RaptorPauseActionButtons(
-    onResume: () -> Unit,
-    onRestart: () -> Unit,
-    onGoToHangar: () -> Unit,
-    onExit: () -> Unit
-) {
+private fun RaptorPauseActionButtons(onResume: () -> Unit, onRestart: () -> Unit, onGoToHangar: () -> Unit, onExit: () -> Unit) {
     Button(
-        onClick = onResume,
-        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF2E7D32)),
-        shape = RoundedCornerShape(8.dp),
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(44.dp)
-            .testTag("resume_button")
+        onClick = onResume, colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF2E7D32)),
+        shape = RoundedCornerShape(8.dp), modifier = Modifier.fillMaxWidth().height(44.dp).testTag("resume_button")
     ) {
         Icon(Icons.Filled.PlayArrow, contentDescription = null)
         Spacer(modifier = Modifier.width(6.dp))
@@ -355,17 +269,23 @@ private fun RaptorPauseActionButtons(
     }
 
     Spacer(modifier = Modifier.height(8.dp))
+    RaptorRestartHangarRow(onRestart = onRestart, onGoToHangar = onGoToHangar)
+    Spacer(modifier = Modifier.height(8.dp))
 
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(8.dp)
+    OutlinedButton(
+        onClick = onExit, shape = RoundedCornerShape(8.dp),
+        modifier = Modifier.fillMaxWidth().testTag("raptor_exit_button")
     ) {
+        Text("EXIT TO ARCADE HUB", color = Color(0xFFFF5252))
+    }
+}
+
+@Composable
+private fun RaptorRestartHangarRow(onRestart: () -> Unit, onGoToHangar: () -> Unit) {
+    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         OutlinedButton(
-            onClick = onRestart,
-            shape = RoundedCornerShape(8.dp),
-            modifier = Modifier
-                .weight(1f)
-                .testTag("raptor_restart_button")
+            onClick = onRestart, shape = RoundedCornerShape(8.dp),
+            modifier = Modifier.weight(1f).testTag("raptor_restart_button")
         ) {
             Icon(Icons.Filled.Refresh, contentDescription = null)
             Spacer(modifier = Modifier.width(4.dp))
@@ -373,37 +293,12 @@ private fun RaptorPauseActionButtons(
         }
 
         OutlinedButton(
-            onClick = onGoToHangar,
-            shape = RoundedCornerShape(8.dp),
-            modifier = Modifier
-                .weight(1f)
-                .testTag("raptor_hangar_button")
+            onClick = onGoToHangar, shape = RoundedCornerShape(8.dp),
+            modifier = Modifier.weight(1f).testTag("raptor_hangar_button")
         ) {
-            Icon(
-                Icons.Filled.MonetizationOn,
-                contentDescription = null,
-                tint = Color(0xFFFF9100),
-                modifier = Modifier.size(16.dp)
-            )
+            Icon(Icons.Filled.MonetizationOn, contentDescription = null, tint = Color(0xFFFF9100), modifier = Modifier.size(16.dp))
             Spacer(modifier = Modifier.width(4.dp))
-            Text(
-                "HANGAR",
-                color = Color(0xFFFF9100),
-                fontWeight = FontWeight.Bold,
-                fontSize = 12.sp
-            )
+            Text("HANGAR", color = Color(0xFFFF9100), fontWeight = FontWeight.Bold, fontSize = 12.sp)
         }
-    }
-
-    Spacer(modifier = Modifier.height(8.dp))
-
-    OutlinedButton(
-        onClick = onExit,
-        shape = RoundedCornerShape(8.dp),
-        modifier = Modifier
-            .fillMaxWidth()
-            .testTag("raptor_exit_button")
-    ) {
-        Text("EXIT TO ARCADE HUB", color = Color(0xFFFF5252))
     }
 }

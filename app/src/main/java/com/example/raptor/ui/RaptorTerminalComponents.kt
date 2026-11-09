@@ -175,28 +175,15 @@ fun TerminalPilotStatusHeader(
 
 @Composable
 private fun TerminalCrtBase(
-    title: String,
-    titleColor: Color,
-    category: String,
-    categoryColor: Color,
-    borderColor: Color,
-    previewBgColor: Color,
-    previewBorderColor: Color,
-    iconRes: Int,
-    description: String,
-    descColor: Color,
-    statusLabel: String,
-    statusValue: String,
-    statusValueColor: Color,
-    cost: Long,
-    crtPulse: Float,
-    modifier: Modifier = Modifier
+    title: String, titleColor: Color, category: String, categoryColor: Color,
+    borderColor: Color, previewBgColor: Color, previewBorderColor: Color,
+    iconRes: Int?, description: String, descColor: Color,
+    statusLabel: String, statusValue: String, statusValueColor: Color,
+    cost: Long, crtPulse: Float, modifier: Modifier = Modifier
 ) {
     Column(
-        modifier = modifier
-            .background(Color(0xFF05070B), RoundedCornerShape(8.dp))
-            .border(2.dp, borderColor.copy(alpha = crtPulse), RoundedCornerShape(8.dp))
-            .padding(10.dp)
+        modifier = modifier.background(Color(0xFF05070B), RoundedCornerShape(8.dp))
+            .border(2.dp, borderColor.copy(alpha = crtPulse), RoundedCornerShape(8.dp)).padding(10.dp)
     ) {
         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
             Text(title, color = titleColor, fontSize = 13.sp, fontWeight = FontWeight.Black, fontFamily = FontFamily.Monospace)
@@ -204,14 +191,12 @@ private fun TerminalCrtBase(
         }
         Spacer(modifier = Modifier.height(6.dp))
         Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(75.dp)
-                .background(previewBgColor, RoundedCornerShape(4.dp))
-                .border(1.dp, previewBorderColor, RoundedCornerShape(4.dp)),
-            contentAlignment = Alignment.Center
+            modifier = Modifier.fillMaxWidth().height(75.dp).background(previewBgColor, RoundedCornerShape(4.dp))
+                .border(1.dp, previewBorderColor, RoundedCornerShape(4.dp)), contentAlignment = Alignment.Center
         ) {
-            Image(painter = painterResource(id = iconRes), contentDescription = title, contentScale = ContentScale.Fit, modifier = Modifier.fillMaxSize().padding(4.dp))
+            if (iconRes != null) {
+                Image(painter = painterResource(id = iconRes), contentDescription = title, contentScale = ContentScale.Fit, modifier = Modifier.fillMaxSize().padding(4.dp))
+            }
         }
         Spacer(modifier = Modifier.height(8.dp))
         Text(description, color = descColor, fontSize = 10.sp, fontFamily = FontFamily.Monospace, lineHeight = 13.sp)
@@ -301,63 +286,79 @@ fun TerminalControlDeck(
     onToggleBuyMode: (Boolean) -> Unit,
     canAfford: Boolean,
     currentItem: ArmoryItem,
+    isAlreadyOwned: Boolean = false,
+    isEquipped: Boolean = false,
     onPrevItem: () -> Unit,
     onNextItem: () -> Unit,
     onActionClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     Card(
-        shape = RoundedCornerShape(10.dp),
-        colors = CardDefaults.cardColors(containerColor = Color(0xFF141923)),
-        border = BorderStroke(1.5.dp, Color(0xFF263238)),
-        modifier = modifier.fillMaxWidth()
+        shape = RoundedCornerShape(10.dp), colors = CardDefaults.cardColors(containerColor = Color(0xFF141923)),
+        border = BorderStroke(1.5.dp, Color(0xFF263238)), modifier = modifier.fillMaxWidth()
     ) {
         Column(modifier = Modifier.padding(10.dp), horizontalAlignment = Alignment.CenterHorizontally) {
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                 TerminalModeToggle(isBuyMode = isBuyMode, onToggleBuyMode = onToggleBuyMode)
                 Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                    Button(
-                        onClick = onPrevItem,
-                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF263238)),
-                        shape = RoundedCornerShape(6.dp),
-                        modifier = Modifier.size(width = 44.dp, height = 36.dp).testTag("terminal_prev_item")
-                    ) {
+                    Button(onClick = onPrevItem, colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF263238)),
+                        shape = RoundedCornerShape(6.dp), modifier = Modifier.size(width = 44.dp, height = 36.dp).testTag("terminal_prev_item")) {
                         Text("<<", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Color(0xFF00E5FF))
                     }
-                    Button(
-                        onClick = onNextItem,
-                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF263238)),
-                        shape = RoundedCornerShape(6.dp),
-                        modifier = Modifier.size(width = 44.dp, height = 36.dp).testTag("terminal_next_item")
-                    ) {
+                    Button(onClick = onNextItem, colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF263238)),
+                        shape = RoundedCornerShape(6.dp), modifier = Modifier.size(width = 44.dp, height = 36.dp).testTag("terminal_next_item")) {
                         Text(">>", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Color(0xFF00E5FF))
                     }
                 }
             }
             Spacer(modifier = Modifier.height(10.dp))
-            Button(
-                onClick = onActionClick,
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = if (isBuyMode) {
-                        if (canAfford) Color(0xFF2E7D32) else Color(0xFF37474F)
-                    } else Color(0xFFC62828)
-                ),
-                shape = RoundedCornerShape(8.dp),
-                border = BorderStroke(2.dp, if (isBuyMode && canAfford) Color(0xFF00E676) else Color(0xFF78909C)),
-                modifier = Modifier.fillMaxWidth().height(48.dp).testTag("terminal_action_button")
-            ) {
-                Text(
-                    text = if (isBuyMode) {
-                        if (canAfford) "BUY ITEM ($${currentItem.cost})" else "INSUFFICIENT FUNDS ($${currentItem.cost})"
-                    } else "SELL ITEM (REFUND)",
-                    color = Color.White,
-                    fontSize = 13.sp,
-                    fontWeight = FontWeight.Black,
-                    fontFamily = FontFamily.Monospace,
-                    letterSpacing = 1.sp
-                )
-            }
+            TerminalBuySellButton(isBuyMode, canAfford, currentItem.cost, isAlreadyOwned, isEquipped, onActionClick)
         }
+    }
+}
+
+@Composable
+private fun TerminalBuySellButton(
+    isBuyMode: Boolean,
+    canAfford: Boolean,
+    cost: Long,
+    isAlreadyOwned: Boolean = false,
+    isEquipped: Boolean = false,
+    onClick: () -> Unit
+) {
+    val buttonColor = when {
+        !isBuyMode -> Color(0xFFC62828)
+        isEquipped -> Color(0xFF1565C0)
+        isAlreadyOwned -> Color(0xFF00695C)
+        canAfford -> Color(0xFF2E7D32)
+        else -> Color(0xFF37474F)
+    }
+    val borderColor = when {
+        !isBuyMode -> Color(0xFFEF5350)
+        isEquipped -> Color(0xFF00E5FF)
+        isAlreadyOwned -> Color(0xFF26A69A)
+        canAfford -> Color(0xFF00E676)
+        else -> Color(0xFF78909C)
+    }
+    val buttonText = when {
+        !isBuyMode -> "SELL ITEM (REFUND)"
+        isEquipped -> "EQUIPPED (ACTIVE)"
+        isAlreadyOwned -> "EQUIP WEAPON (OWNED)"
+        canAfford -> "BUY ITEM ($$$cost)"
+        else -> "INSUFFICIENT FUNDS ($$$cost)"
+    }
+
+    Button(
+        onClick = onClick,
+        colors = ButtonDefaults.buttonColors(containerColor = buttonColor),
+        shape = RoundedCornerShape(8.dp),
+        border = BorderStroke(2.dp, borderColor),
+        modifier = Modifier.fillMaxWidth().height(48.dp).testTag("terminal_action_button")
+    ) {
+        Text(
+            text = buttonText,
+            color = Color.White, fontSize = 13.sp, fontWeight = FontWeight.Black, fontFamily = FontFamily.Monospace, letterSpacing = 1.sp
+        )
     }
 }
 

@@ -2,7 +2,7 @@
 
 > **Document Version:** 1.0.0  
 > **Target Release:** v0.6.1  
-> **Status:** PROPOSED / READY FOR EXECUTION  
+> **Status:** COMPLETED / VERIFIED  
 > **Module Scope:** `:app` (`com.example.dinorun.*`) ➔ `:pixie-engine` / `:pixie-android`  
 > **Reference Guidelines:** `AGENTS.md` (Fluent builders, file limits < 500 lines, function limits < 50 lines)
 
@@ -153,11 +153,11 @@ Refactor Dinorun using **localized, surgical edits** to consume engine-core subs
 *Current State:* `DinoPlayer.parameterCalculator` manually evaluates `calculateDifficultyMultiplier(1.0f, 0.08f)`. `engine.context.difficulty` (`0..100`) is not actively synchronized.  
 *Target State:* Synchronize `engine.context.difficulty` dynamically from distance traveled.
 
-- [ ] **6.1. Distance-to-Difficulty Mapping**
-  - [ ] In `DinoGameCoordinator.checkCustomCollisions()`: update `engine.context.difficulty = (engine.context.distance / 25f).toInt().coerceIn(0, 100)`.
-- [ ] **6.2. Harmonize Dynamic Scaling**
-  - [ ] Keep `DinoPlayer` run speed scaling formula compatible with `engine.context.difficulty`.
-  - [ ] Ensure difficulty progression remains smooth without sudden speed jumps.
+- [x] **6.1. Distance-to-Difficulty Mapping**
+  - [x] In `DinoGameCoordinator.checkCustomCollisions()`: update `engine.context.difficulty = (engine.context.distance / 25f).toInt().coerceIn(0, 100)`.
+- [x] **6.2. Harmonize Dynamic Scaling**
+  - [x] Keep `DinoPlayer` run speed scaling formula compatible with `engine.context.difficulty`.
+  - [x] Ensure difficulty progression remains smooth without sudden speed jumps.
 
 ---
 
@@ -165,14 +165,14 @@ Refactor Dinorun using **localized, surgical edits** to consume engine-core subs
 *Current State:* 11 passing tests in `DinoGameCoordinatorTest.kt`.  
 *Target State:* 100% test pass rate with new tests verifying trajectory integration and particle emission.
 
-- [ ] **7.1. Code Architecture & Limits Check**
-  - [ ] Ensure `DinoHud.kt` is reduced below 300 lines.
-  - [ ] Ensure `DinoControls.kt` is under 150 lines.
-  - [ ] Ensure `DinoGameCoordinator.kt` remains under 200 lines.
-  - [ ] Verify all Composable functions are under 50 lines.
-- [ ] **7.2. Run JVM Unit & Robolectric Tests**
-  - [ ] Execute `gradle :app:testDebugUnitTest`.
-  - [ ] Verify all existing test cases pass:
+- [x] **7.1. Code Architecture & Limits Check**
+  - [x] Ensure `DinoHud.kt` is reduced below 300 lines.
+  - [x] Ensure `DinoControls.kt` is under 150 lines.
+  - [x] Ensure `DinoGameCoordinator.kt` remains under 200 lines.
+  - [x] Verify all Composable functions are under 50 lines.
+- [x] **7.2. Run JVM Unit & Robolectric Tests**
+  - [x] Execute `gradle :app:testDebugUnitTest`.
+  - [x] Verify all existing test cases pass:
     - `initialization sets up prehistoric world, grounded player and default metrics`
     - `jump input triggers vertical leap, airborne state and jump animation`
     - `airborne jump physics integrates gravity and lands smoothly back on ground`
@@ -184,8 +184,8 @@ Refactor Dinorun using **localized, surgical edits** to consume engine-core subs
     - `distance progression updates score and tracks milestones`
     - `world switching and restart resets game state and updates world configuration`
     - `dynamic difficulty scales player run speed as difficulty rises`
-- [ ] **7.3. Add Trajectory & Particle Verification Tests**
+- [x] **7.3. Add Trajectory & Particle Verification Tests**
   - [x] Add test verifying `PterodactylHazard` updates position along sine wave trajectory.
   - [x] Add test verifying `VolcanicMeteor` ground impact spawns particles into `engine.particleLayer`.
-- [ ] **7.4. Compile Applet Check**
-  - [ ] Run `compile_applet` to ensure pristine Android build without warnings or missing symbols.
+- [x] **7.4. Compile Applet Check**
+  - [x] Run `compile_applet` to ensure pristine Android build without warnings or missing symbols.

@@ -14,7 +14,8 @@ enum class ExplosionType {
     AERIAL_EXPLOSION,
     GROUND_BLAST,
     SHOCKWAVE,
-    TITAN_CHAIN
+    TITAN_CHAIN,
+    BRICK_DEBRIS
 }
 
 /**
@@ -41,6 +42,7 @@ object ProceduralExplosion {
             ExplosionType.GROUND_BLAST -> spawnGroundBlast(position, pool, activeList, (26 * scale).toInt().coerceAtLeast(12))
             ExplosionType.SHOCKWAVE -> spawnShockwave(position, pool, activeList, (16 * scale).toInt().coerceAtLeast(8))
             ExplosionType.TITAN_CHAIN -> spawnTitanChain(position, pool, activeList, scale)
+            ExplosionType.BRICK_DEBRIS -> spawnBrickShards(position, pool, activeList)
         }
     }
 
@@ -236,6 +238,45 @@ object ProceduralExplosion {
         )
         for (offset in offsets) {
             spawnPlasmaBurst(pos + offset, pool, activeList, 8)
+        }
+    }
+
+    /**
+     * Spawns 4 authentic NES-style brick debris shards launching diagonally outward
+     * (top-left, top-right, bottom-left, bottom-right) under gravity with tumbling animation.
+     */
+    fun spawnBrickShards(
+        pos: Vec2,
+        pool: ParticlePool,
+        activeList: MutableList<Particle>,
+        gravity: Float = 600f,
+        color: Int = 0xFFB84418.toInt()
+    ) {
+        val shardConfigs = arrayOf(
+            // Top-left: high upward launch with leftward horizontal velocity
+            Triple(Vec2(-4f, -4f), Vec2(-45f, -160f), 0.85f),
+            // Top-right: high upward launch with rightward horizontal velocity
+            Triple(Vec2(4f, -4f), Vec2(45f, -160f), 0.85f),
+            // Bottom-left: lower upward launch with leftward horizontal velocity
+            Triple(Vec2(-4f, 4f), Vec2(-35f, -110f), 0.85f),
+            // Bottom-right: lower upward launch with rightward horizontal velocity
+            Triple(Vec2(4f, 4f), Vec2(35f, -110f), 0.85f)
+        )
+
+        for ((offset, vel, lifespan) in shardConfigs) {
+            val p = pool.obtain()
+            p.spawn(
+                pos = pos + offset,
+                vel = vel,
+                accel = Vec2(0f, gravity),
+                lifespan = lifespan,
+                particleSize = 4f,
+                startClr = color,
+                endClr = 0xFF581C08.toInt(),
+                linearDrag = 0f
+            )
+            p.isTumbling = true
+            activeList.add(p)
         }
     }
 }

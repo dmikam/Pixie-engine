@@ -325,4 +325,189 @@ class RaptorGameCoordinatorTest {
             audio.release()
         }
     }
+
+    @Test
+    fun `wave spawner delays and reset timers initialize with expected defaults`() {
+        val (audio, coordinator) = createContextAndCoordinator()
+        try {
+            assertEquals(1.2f, coordinator.waveSpawner.waveSpawnTimer, 0.001f)
+            assertEquals(0.4f, coordinator.waveSpawner.groundSpawnTimer, 0.001f)
+
+            coordinator.waveSpawner.reset(waveDelay = 2.5f, groundDelay = 1.0f)
+            assertEquals(2.5f, coordinator.waveSpawner.waveSpawnTimer, 0.001f)
+            assertEquals(1.0f, coordinator.waveSpawner.groundSpawnTimer, 0.001f)
+
+            coordinator.waveSpawner.reset()
+            assertEquals(1.2f, coordinator.waveSpawner.waveSpawnTimer, 0.001f)
+            assertEquals(0.4f, coordinator.waveSpawner.groundSpawnTimer, 0.001f)
+        } finally {
+            audio.release()
+        }
+    }
+
+    @Test
+    fun `offscreen craft and wrecks past Y 350 are removed from simulation`() {
+        val (audio, coordinator) = createContextAndCoordinator()
+        try {
+            val scout = ScoutEnemyShip("test_offscreen", Vec2(100f, 351f), coordinator.engine.projectilePool)
+            coordinator.enemies.add(scout)
+            coordinator.engine.itemsLayer.addObject(scout)
+
+            val wreck = ScoutEnemyShip("test_wreck", Vec2(120f, 340f), coordinator.engine.projectilePool).apply {
+                isWreck = true
+                position = Vec2(120f, 352f)
+            }
+            coordinator.enemies.add(wreck)
+            coordinator.engine.itemsLayer.addObject(wreck)
+
+            coordinator.update(0.016f)
+
+            assertFalse("Offscreen enemy should be removed from enemies list", coordinator.enemies.contains(scout))
+            assertFalse("Offscreen enemy should be removed from items layer", coordinator.engine.itemsLayer.objects.contains(scout))
+            assertFalse("Offscreen wreck should be removed from enemies list", coordinator.enemies.contains(wreck))
+        } finally {
+            audio.release()
+        }
+    }
+
+    @Test
+    fun `inputAdapter is wired to engine and steers player craft along virtual axes`() {
+        val (audio, coordinator) = createContextAndCoordinator()
+        try {
+            assertEquals(coordinator.inputAdapter, coordinator.engine.input)
+
+            val initialTarget = coordinator.playerShip.targetPosition
+            // Steer right via moveX = 1f
+            coordinator.inputAdapter.moveX = 1f
+            coordinator.update(0.1f)
+            assertTrue("Target X should move right", coordinator.playerShip.targetPosition.x > initialTarget.x)
+
+            // Steer up via moveY = -1f
+            coordinator.inputAdapter.moveX = 0f
+            coordinator.inputAdapter.moveY = -1f
+            val midTarget = coordinator.playerShip.targetPosition
+            coordinator.update(0.1f)
+            assertTrue("Target Y should move up", coordinator.playerShip.targetPosition.y < midTarget.y)
+
+            // Touch drag works simultaneously
+            coordinator.inputAdapter.reset()
+            coordinator.movePlayer(15f, 25f)
+            val touchTarget = coordinator.playerShip.targetPosition
+            assertEquals(midTarget.x + 15f, touchTarget.x, 0.05f)
+        } finally {
+            audio.release()
+        }
+    }
+
+    @Test
+    fun `layer stack maintains clean vertical scroller z-order`() {
+        val (audio, coordinator) = createContextAndCoordinator()
+        try {
+            val enabledLayers = coordinator.engine.layerStack.allLayers().filter { it.isEnabled }
+            val layerNamesAndOrders = enabledLayers.map { it.name to it.order }
+
+            assertEquals(5, enabledLayers.size)
+            assertEquals("Raptor_Vertical_Terrain" to 150, layerNamesAndOrders[0])
+            assertEquals("Layer5_Items" to 500, layerNamesAndOrders[1])
+            assertEquals("Raptor_Projectiles" to 520, layerNamesAndOrders[2])
+            assertEquals("Layer_Particles" to 550, layerNamesAndOrders[3])
+            assertEquals("Raptor_Clouds" to 600, layerNamesAndOrders[4])
+
+            for (i in 0 until enabledLayers.size - 1) {
+                assertTrue(
+                    "Layer ${enabledLayers[i].name} (${enabledLayers[i].order}) must render below ${enabledLayers[i+1].name} (${enabledLayers[i+1].order})",
+                    enabledLayers[i].order < enabledLayers[i + 1].order
+                )
+            }
+        } finally {
+            audio.release()
+        }
+    }
+
+    @Test
+    fun `unlocking weapons adds them to unlocked list and allows switching during combat`() {
+        val (audio, coordinator) = createContextAndCoordinator()
+        try {
+            assertEquals(listOf("vulcan"), coordinator.unlockedWeapons)
+            assertEquals("vulcan", coordinator.activeWeaponId)
+            assertEquals("vulcan", coordinator.playerShip.activeWeaponId)
+
+            coordinator.unlockWeapon("odin_laser")
+            assertTrue(coordinator.unlockedWeapons.contains("odin_laser"))
+            assertEquals("odin_laser", coordinator.activeWeaponId)
+            assertEquals("odin_laser", coordinator.playerShip.activeWeaponId)
+
+            coordinator.unlockWeapon("deathray")
+            assertTrue(coordinator.unlockedWeapons.contains("deathray"))
+            assertEquals("deathray", coordinator.activeWeaponId)
+
+            // Switch back to vulcan
+            val switchedVulcan = coordinator.switchWeapon("vulcan")
+            assertTrue(switchedVulcan)
+            assertEquals("vulcan", coordinator.activeWeaponId)
+            assertEquals("vulcan", coordinator.playerShip.activeWeaponId)
+
+            // Switch to odin_laser
+            val switchedLaser = coordinator.switchWeapon("odin_laser")
+            assertTrue(switchedLaser)
+            assertEquals("odin_laser", coordinator.activeWeaponId)
+            assertEquals("odin_laser", coordinator.playerShip.activeWeaponId)
+
+            // Attempting to switch to unowned weapon fails
+            val switchedUnowned = coordinator.switchWeapon("unknown_cannon")
+            assertFalse(switchedUnowned)
+        } finally {
+            audio.release()
+        }
+    }
+
+    @Test
+    fun `cycleWeapon loops through all unlocked weapons seamlessly`() {
+        val (audio, coordinator) = createContextAndCoordinator()
+        try {
+            coordinator.unlockWeapon("twin_plasma")
+            coordinator.unlockWeapon("odin_laser")
+            coordinator.switchWeapon("vulcan")
+
+            assertEquals("vulcan", coordinator.activeWeaponId)
+
+            val next1 = coordinator.cycleWeapon()
+            assertEquals("twin_plasma", next1)
+            assertEquals("twin_plasma", coordinator.activeWeaponId)
+
+            val next2 = coordinator.cycleWeapon()
+            assertEquals("odin_laser", next2)
+            assertEquals("odin_laser", coordinator.activeWeaponId)
+
+            val next3 = coordinator.cycleWeapon()
+            assertEquals("vulcan", next3)
+            assertEquals("vulcan", coordinator.activeWeaponId)
+        } finally {
+            audio.release()
+        }
+    }
+
+    @Test
+    fun `setupGame preserves unlocked weapons and persistent perks`() {
+        val (audio, coordinator) = createContextAndCoordinator()
+        try {
+            coordinator.unlockWeapon("deathray")
+            coordinator.persistentPerks.add("MAGNET_BEAM")
+            coordinator.savedWeaponTier = 3
+            coordinator.savedMissiles = 10
+            coordinator.savedBombs = 4
+
+            // Re-invoke setupGame (e.g. launching level or restarting)
+            coordinator.setupGame()
+
+            assertEquals("deathray", coordinator.playerShip.activeWeaponId)
+            assertTrue(coordinator.playerShip.unlockedWeapons.contains("deathray"))
+            assertEquals(3, coordinator.playerShip.weaponTier)
+            assertEquals(10, coordinator.playerShip.missileSalvoes)
+            assertEquals(4, coordinator.playerShip.megaBombs)
+            assertTrue(coordinator.engine.context.hasPerk("MAGNET_BEAM"))
+        } finally {
+            audio.release()
+        }
+    }
 }

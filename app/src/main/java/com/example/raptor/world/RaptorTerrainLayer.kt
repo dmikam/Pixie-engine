@@ -99,10 +99,20 @@ class RaptorTerrainLayer(
         }
     }
 
+    fun calculateEffectiveSpeed(movingSpeed: Float): Float {
+        val speedMultiplier = if (movingSpeed > 0f) {
+            1f + (movingSpeed / 360f).coerceIn(0f, 1f) * 0.4f
+        } else {
+            1f
+        }
+        return scrollSpeed * speedMultiplier
+    }
+
     override fun update(dt: Float, context: GameContext) {
         if (!isEnabled) return
 
-        scrollOffset = (scrollOffset + scrollSpeed * dt) % 320f
+        val effectiveSpeed = calculateEffectiveSpeed(context.currentMovingSpeed)
+        scrollOffset = (scrollOffset + effectiveSpeed * dt) % 320f
         waveTime += dt
 
         val level = currentLevelGetter()
@@ -111,7 +121,7 @@ class RaptorTerrainLayer(
             1 -> {
                 // Update and recycle islands downwards
                 for (island in islands) {
-                    island.y += scrollSpeed * dt
+                    island.y += effectiveSpeed * dt
                     if (island.y > 340f) {
                         island.y = -60f - Random.nextFloat() * 40f
                         island.x = Random.nextFloat() * (240f - island.width - 20f) + 10f
@@ -121,7 +131,7 @@ class RaptorTerrainLayer(
             3 -> {
                 // Update parallax stars
                 for (star in stars) {
-                    star.y += (scrollSpeed * star.speedFactor) * dt
+                    star.y += (effectiveSpeed * star.speedFactor) * dt
                     if (star.y > 330f) {
                         star.y = -10f
                         star.x = Random.nextFloat() * 240f

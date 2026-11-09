@@ -4,8 +4,7 @@ import androidx.compose.runtime.Composable
 import com.pixie.engine.core.context.DifficultyPreset
 
 /**
- * Encapsulated dialog overlays for active Raptor combat sessions
- * (Tactical Pause, Interceptor Destroyed Game Over, and Mission Victory).
+ * Encapsulated dialog overlays for active Raptor combat sessions.
  */
 @Composable
 fun RaptorModals(
@@ -30,41 +29,23 @@ fun RaptorModals(
 ) {
     if (isPaused) {
         RaptorPauseDialog(
-            selectedDifficulty = selectedDifficulty,
-            isSoundEnabled = isSoundEnabled,
-            isHapticEnabled = isHapticEnabled,
-            currentLevel = currentLevelIndex,
-            onResume = onResume,
-            onRestart = onRestart,
-            onGoToHangar = onGoToHangar,
-            onToggleSound = onToggleSound,
-            onToggleHaptic = onToggleHaptic,
-            onSelectDifficulty = onSelectDifficulty,
-            onSelectLevel = onSelectLevel,
-            onExit = onExitToTitle
+            selectedDifficulty = selectedDifficulty, isSoundEnabled = isSoundEnabled,
+            isHapticEnabled = isHapticEnabled, currentLevel = currentLevelIndex,
+            onResume = onResume, onRestart = onRestart, onGoToHangar = onGoToHangar,
+            onToggleSound = onToggleSound, onToggleHaptic = onToggleHaptic,
+            onSelectDifficulty = onSelectDifficulty, onSelectLevel = onSelectLevel, onExit = onExitToTitle
         )
     }
-
     if (isGameOver) {
         RaptorGameOverDialog(
-            score = currentScore,
-            levelName = levelName,
-            difficulty = selectedDifficulty,
-            onRestart = onRestart,
-            onGoToHangar = onGoToHangar,
-            onExit = onExitToTitle
+            score = currentScore, levelName = levelName, difficulty = selectedDifficulty,
+            onRestart = onRestart, onGoToHangar = onGoToHangar, onExit = onExitToTitle
         )
     }
-
     if (isVictory) {
         RaptorVictoryDialog(
-            score = currentScore,
-            levelName = levelName,
-            hasNextLevel = currentLevelIndex < 3,
-            onNextLevel = onNextLevel,
-            onGoToHangar = onGoToHangar,
-            onRestart = onRestart,
-            onExit = onExitToTitle
+            score = currentScore, levelName = levelName, hasNextLevel = currentLevelIndex < 3,
+            onNextLevel = onNextLevel, onGoToHangar = onGoToHangar, onRestart = onRestart, onExit = onExitToTitle
         )
     }
 }

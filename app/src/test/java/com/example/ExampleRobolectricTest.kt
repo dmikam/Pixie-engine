@@ -45,11 +45,11 @@ class ExampleRobolectricTest {
         assertEquals(GameStatus.PLAYABLE, arkanoid?.status)
         assertEquals("Fixed Screen", arkanoid?.paradigm)
 
-        val chiki = PocGameRegistry.getById("chiki")
-        assertNotNull(chiki)
-        assertEquals("Chiki", chiki?.title)
-        assertEquals(GameStatus.NEXT_UP, chiki?.status)
-        assertEquals("Classic Platformer", chiki?.paradigm)
+        val superpixie = PocGameRegistry.getById("superpixie")
+        assertNotNull(superpixie)
+        assertEquals("Super Pixie", superpixie?.title)
+        assertEquals(GameStatus.NEXT_UP, superpixie?.status)
+        assertEquals("Tilemap Platformer", superpixie?.paradigm)
     }
 
     @Test

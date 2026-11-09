@@ -122,36 +122,36 @@ object PocGameRegistry {
             controlsSummary = "Horizontal Touch Slide / Paddle Left-Right Steer"
         ),
         PocGameInfo(
-            id = "chiki",
-            title = "Chiki",
-            genre = "Classic Side-Scrolling Platformer",
-            paradigm = "Classic Platformer",
+            id = "superpixie",
+            title = "Super Pixie",
+            genre = "NES Classic 2D Platformer",
+            paradigm = "Tilemap Platformer",
             status = GameStatus.NEXT_UP,
             releaseVersion = "v0.7",
-            tagline = "Explore hand-crafted fantasy stages with acrobatic jumping, climbing, and melee combat.",
-            description = "Inspired by golden-age 80s/90s arcade platformers like Chiki Chiki Boys / Wonder Boy. Guide an agile hero through treacherous ruins with multi-tier platforms, climbing ladders, and roaming creatures.",
-            primaryColor = Color(0xFF00E676),
-            secondaryColor = Color(0xFF00C853),
+            tagline = "Run, jump, stomp enemies, bonk question blocks, and hurl crates in a faithful NES platformer homage.",
+            description = "A faithful homage to 8-bit NES golden-age platformers (Super Mario Bros & Chip 'n Dale 2). Guide a nimble hero across scrolling worlds, head-bonking mystery blocks to spawn coins and mushrooms, stomping roaming monsters, and picking up crates to hurl at obstacles.",
+            primaryColor = Color(0xFFFF5252),
+            secondaryColor = Color(0xFFFF1744),
             engineHighlights = listOf(
-                "Bidirectional follow camera with configurable deadzones",
-                "Tilemap chunk parser with solid, one-way, and hazard flags",
-                "Coyote time & jump-buffer platformer physics controller",
-                "Multi-frame sprite state machine (Idle, Run, Jump, Climb, Attack)"
+                "TilemapChunkLayer with bumpable blocks & breakable bricks",
+                "PlatformerFollowViewMode camera with lead smoothing",
+                "NES-grade physics: momentum, skidding, variable jump cut, coyote time",
+                "Interactive object pick-and-throw subsystem (Chip 'n Dale homage)"
             ),
             plannedMechanics = listOf(
-                "Precision jump arcs with variable height cutoff",
-                "Ladder climbing & drop-down through one-way ledges",
-                "Melee slash attack with knockback physics",
-                "Hidden treasure chests, gem pickups, and level goal gate"
+                "Head-bonk ? blocks popping coins & mushrooms with vertical recoil",
+                "Stomp detection bouncing hero upward upon hitting enemy heads",
+                "Crate carrying & projectile throwing against enemies and walls",
+                "Flagpole & castle level completion sequence"
             ),
             subsystemsTested = listOf(
-                "Bidirectional Deadzone Camera",
-                "Tilemap Collision Matrix",
-                "Platformer Physics Arc",
-                "Sprite Frame Sequencer",
-                "One-Way Platform Resolver"
+                "Tilemap Collision Engine",
+                "PlatformerFollow Camera",
+                "Momentum & Jump-Cut Physics",
+                "Head-Bonk Tile Reaction",
+                "Stomp & Recoil Vectors"
             ),
-            controlsSummary = "Arcade D-Pad + Jump + Melee Slash + Climb Up/Down"
+            controlsSummary = "D-Pad (Left/Right/Duck) + Button A (Jump) + Button B (Run / Pick & Throw)"
         )
     )
 

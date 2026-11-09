@@ -376,12 +376,52 @@ class DinoGameCoordinatorTest {
             coordinator.engine.context.difficulty = 0
             player.update(0.016f, coordinator.engine.context)
             val baseRunSpeed = player.velocity.x
+            assertEquals(baseRunSpeed, coordinator.engine.context.currentMovingSpeed, 0.001f)
 
             coordinator.engine.context.difficulty = 80
             player.update(0.016f, coordinator.engine.context)
             val boostedRunSpeed = player.velocity.x
+            assertEquals(boostedRunSpeed, coordinator.engine.context.currentMovingSpeed, 0.001f)
 
             assertTrue("Run speed should scale up with higher difficulty", boostedRunSpeed > baseRunSpeed)
+
+            // Verify continuous smooth scaling across 0..100 without regressions or sudden jumps
+            var prevSpeed = baseRunSpeed
+            for (diff in 10..100 step 10) {
+                coordinator.engine.context.difficulty = diff
+                player.update(0.016f, coordinator.engine.context)
+                val speed = player.velocity.x
+                assertTrue("Speed should monotonically increase with difficulty: diff=$diff", speed > prevSpeed)
+                assertTrue("Speed increment should remain smooth (< 10 px/s per 10 difficulty pts)", speed - prevSpeed < 10f)
+                prevSpeed = speed
+            }
+        } finally {
+            audio.release()
+        }
+    }
+
+    @Test
+    fun `distance progression updates context difficulty dynamically`() {
+        val (audio, _, coordinator) = createContextAndCoordinator()
+        try {
+            coordinator.player.position = Vec2(0f, coordinator.player.position.y)
+            coordinator.checkCustomCollisions()
+            assertEquals(0, coordinator.engine.context.difficulty)
+
+            // 500f px -> 50m -> difficulty = 50 / 25 = 2
+            coordinator.player.position = Vec2(500f, coordinator.player.position.y)
+            coordinator.checkCustomCollisions()
+            assertEquals(2, coordinator.engine.context.difficulty)
+
+            // 2500f px -> 250m -> difficulty = 250 / 25 = 10
+            coordinator.player.position = Vec2(2500f, coordinator.player.position.y)
+            coordinator.checkCustomCollisions()
+            assertEquals(10, coordinator.engine.context.difficulty)
+
+            // 30000f px -> 3000m -> difficulty = 3000 / 25 = 120 -> coerced to 100
+            coordinator.player.position = Vec2(30000f, coordinator.player.position.y)
+            coordinator.checkCustomCollisions()
+            assertEquals(100, coordinator.engine.context.difficulty)
         } finally {
             audio.release()
         }

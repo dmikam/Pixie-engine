@@ -363,12 +363,20 @@ class PixieGame(val engine: PixieEngine) {
 
                             // Overlays inside game canvas
                             activeLayout.topOverlayStatusBar?.let { topOverlay ->
-                                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.TopCenter) {
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .align(Alignment.TopCenter)
+                                ) {
                                     topOverlay()
                                 }
                             }
                             activeLayout.bottomOverlayDeck?.let { bottomOverlay ->
-                                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.BottomCenter) {
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .align(Alignment.BottomCenter)
+                                ) {
                                     bottomOverlay()
                                 }
                             }
@@ -413,12 +421,20 @@ class PixieGame(val engine: PixieEngine) {
 
                         // Overlay bars over canvas
                         activeLayout.topOverlayStatusBar?.let { topOverlay ->
-                            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.TopCenter) {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .align(Alignment.TopCenter)
+                            ) {
                                 topOverlay()
                             }
                         }
                         activeLayout.bottomOverlayDeck?.let { bottomOverlay ->
-                            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.BottomCenter) {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .align(Alignment.BottomCenter)
+                            ) {
                                 bottomOverlay()
                             }
                         }

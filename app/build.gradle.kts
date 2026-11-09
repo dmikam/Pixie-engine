@@ -63,7 +63,15 @@ android {
     compose = true
     buildConfig = true
   }
-  testOptions { unitTests { isIncludeAndroidResources = true } }
+  testOptions {
+    unitTests {
+      isIncludeAndroidResources = true
+      all {
+        it.systemProperty("robolectric.dependency.repo.url", "file:///home/appuser/.m2/repository")
+        it.systemProperty("robolectric.dependency.repo.id", "local")
+      }
+    }
+  }
   dependenciesInfo {
     includeInApk = false
     includeInBundle = true

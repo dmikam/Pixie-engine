@@ -94,8 +94,19 @@ class RaptorShip(
         }
     }
 
+    val unlockedWeapons: List<String>
+        get() = weaponController.unlockedWeapons
+
     fun equipWeapon(weaponId: String) {
         weaponController.equipWeapon(weaponId)
+    }
+
+    fun unlockWeapon(weaponId: String) {
+        weaponController.unlockWeapon(weaponId)
+    }
+
+    fun cycleWeapon(): String {
+        return weaponController.cycleWeapon()
     }
 
     fun upgradeWeapon() {
@@ -114,12 +125,12 @@ class RaptorShip(
 
     fun rechargeShield(amount: Float = 40f) {
         shield = (shield + amount).coerceAtMost(maxShield)
-        audio?.playSound(AudioEvent.COLLECT)
+        audio?.playSound(AudioEvent.POWERUP_PICKUP)
     }
 
     fun repairHull(amount: Float = 30f) {
         hull = (hull + amount).coerceAtMost(maxHull)
-        audio?.playSound(AudioEvent.COLLECT)
+        audio?.playSound(AudioEvent.POWERUP_PICKUP)
     }
 
     fun triggerMegaBomb(
@@ -199,18 +210,20 @@ class RaptorShip(
         if (isInvulnerable || !isAlive) return
 
         shieldRechargeCooldown = shieldRechargeDelay
-        audio?.playSound(AudioEvent.HIT)
         haptics?.trigger(HapticFeedbackType.MEDIUM)
 
         if (shield > 0f) {
+            audio?.playSound(AudioEvent.SHIELD_HIT)
             shield -= amount
             particleLayer?.spawnSparks(position + (size * 0.5f), count = 8, color = 0xFF00E5FF.toInt())
             if (shield < 0f) {
                 // Shield breached, remaining damage bleeds to hull
+                audio?.playSound(AudioEvent.HIT)
                 hull += shield
                 shield = 0f
             }
         } else {
+            audio?.playSound(AudioEvent.HIT)
             hull -= amount
             particleLayer?.spawnSparks(position + (size * 0.5f), count = 10, color = 0xFFFF5722.toInt())
         }

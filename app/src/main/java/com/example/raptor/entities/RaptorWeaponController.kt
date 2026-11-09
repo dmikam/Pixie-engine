@@ -15,6 +15,32 @@ import com.pixie.engine.core.weapon.StandardWeapons
 import com.pixie.engine.core.weapon.WeaponSystem
 
 /**
+ * Known weapon IDs and user-facing nomenclature for Raptor crafts.
+ */
+object RaptorWeapons {
+    const val VULCAN = "vulcan"
+    const val TWIN_PLASMA = "twin_plasma"
+    const val ODIN_LASER = "odin_laser"
+    const val DEATHRAY = "deathray"
+
+    val ALL_WEAPON_IDS = listOf(VULCAN, TWIN_PLASMA, ODIN_LASER, DEATHRAY)
+
+    fun getDisplayName(weaponId: String): String = when (weaponId) {
+        TWIN_PLASMA -> "TWIN PLASMA"
+        ODIN_LASER -> "ODIN LASER"
+        DEATHRAY -> "DEATHRAY"
+        else -> "VULCAN CANNON"
+    }
+
+    fun getShortName(weaponId: String): String = when (weaponId) {
+        TWIN_PLASMA -> "PLASMA"
+        ODIN_LASER -> "ODIN"
+        DEATHRAY -> "DEATHRAY"
+        else -> "VULCAN"
+    }
+}
+
+/**
  * Controller orchestrating weapon tiers, primary firing salvos, homing missile deployment,
  * and mega-bomb screen clearance for the player ship.
  *
@@ -26,7 +52,8 @@ class RaptorWeaponController(
     var haptics: HapticPort? = null
 ) {
     var weaponTier: Int = 1
-    var activeWeaponId: String = "vulcan"
+    var activeWeaponId: String = RaptorWeapons.VULCAN
+    val unlockedWeapons: MutableList<String> = mutableListOf(RaptorWeapons.VULCAN)
 
     val primaryWeaponSystem = WeaponSystem(
         weapon = StandardWeapons.VULCAN_CANNON,
@@ -44,16 +71,37 @@ class RaptorWeaponController(
         haptics = haptics
     )
 
+    fun unlockWeapon(weaponId: String) {
+        if (!unlockedWeapons.contains(weaponId)) {
+            unlockedWeapons.add(weaponId)
+        }
+        equipWeapon(weaponId)
+    }
+
+    fun cycleWeapon(): String {
+        if (unlockedWeapons.isEmpty()) {
+            unlockedWeapons.add(RaptorWeapons.VULCAN)
+        }
+        val currentIndex = unlockedWeapons.indexOf(activeWeaponId)
+        val nextIndex = if (currentIndex >= 0) (currentIndex + 1) % unlockedWeapons.size else 0
+        val nextWeapon = unlockedWeapons[nextIndex]
+        equipWeapon(nextWeapon)
+        return nextWeapon
+    }
+
     fun equipWeapon(weaponId: String) {
+        if (!unlockedWeapons.contains(weaponId)) {
+            unlockedWeapons.add(weaponId)
+        }
         activeWeaponId = weaponId
         updateWeaponTier(GameContext())
     }
 
     fun updateWeaponTier(context: GameContext) {
         when (activeWeaponId) {
-            "odin_laser" -> configureOdinLaser()
-            "deathray" -> configureDeathray()
-            "twin_plasma" -> configureTwinPlasma()
+            RaptorWeapons.ODIN_LASER -> configureOdinLaser()
+            RaptorWeapons.DEATHRAY -> configureDeathray()
+            RaptorWeapons.TWIN_PLASMA -> configureTwinPlasma()
             else -> configureStandardVulcanOrPlasma()
         }
     }
@@ -165,7 +213,9 @@ class RaptorWeaponController(
             }
         }
 
-        particleLayer?.spawnExplosion(ExplosionType.SHOCKWAVE, shipPos + (shipSize * 0.5f), scale = 2.0f)
+        val epicenter = shipPos + (shipSize * 0.5f)
+        particleLayer?.spawnExplosion(ExplosionType.SHOCKWAVE, epicenter, scale = 2.0f)
+        particleLayer?.spawnExplosion(ExplosionType.AERIAL_EXPLOSION, epicenter, scale = 1.5f)
     }
 
     fun update(dt: Float) {

@@ -45,6 +45,7 @@ class DinoGameCoordinator(
 
     lateinit var player: DinoPlayer
     var onStateChanged: (() -> Unit)? = null
+    private var lastMilestoneHundred: Int = 0
 
     init {
         applyWorldConfiguration(currentWorld)
@@ -60,68 +61,48 @@ class DinoGameCoordinator(
             celestialCenter = world.celestialCenter
             celestialRadiusX = world.celestialRadiusX
             celestialRadiusY = world.celestialRadiusY
-            onCelestialShift = { _ ->
-                audioAdapter.playSound(AudioEvent.DAY_NIGHT_SHIFT)
-            }
+            onCelestialShift = { audioAdapter.playSound(AudioEvent.DAY_NIGHT_SHIFT) }
         }
         engine.cloudLayer.windVelocity = world.windVelocity
-
-        // Wire chunk procedural generation to the world definition
         engine.chunkManager.chunkSpawner = { chunkIndex, startX, width, ctx ->
-            val chunkObjects = world.spawnChunkObjects(chunkIndex, startX, width, world.horizonY, ctx)
-            for (obj in chunkObjects) {
+            world.spawnChunkObjects(chunkIndex, startX, width, world.horizonY, ctx).onEach { obj ->
                 if (obj is VolcanicMeteor) {
                     obj.particleLayer = engine.particleLayer
                     obj.audioPort = audioAdapter
                 }
             }
-            chunkObjects
         }
     }
 
     fun setupGame() {
         lastMilestoneHundred = 0
+        engine.context.difficulty = 0
         val groundY = currentWorld.horizonY
-
-        // Create player from self-encapsulated entity
-        player = DinoPlayer(
-            initialPosition = Vec2(40f, groundY - 16f),
-            groundY = groundY
-        )
+        player = DinoPlayer(initialPosition = Vec2(40f, groundY - 16f), groundY = groundY)
         engine.player = player
         engine.itemsLayer.addObject(player)
-
-        // Initialize world chunk generator
         engine.chunkManager.reset(0f)
     }
-
-    private var lastMilestoneHundred: Int = 0
 
     fun updateInputs() {
         if (inputAdapter.isJumpPressed) {
             val wasGrounded = player.isGrounded
             player.jump()
-            if (wasGrounded && !player.isGrounded) {
-                audioAdapter.playSound(AudioEvent.JUMP)
-            }
+            if (wasGrounded && !player.isGrounded) audioAdapter.playSound(AudioEvent.JUMP)
         }
         val wasDucking = player.isDucking
         player.setDuckingState(inputAdapter.isDuckPressed)
-        if (!wasDucking && player.isDucking) {
-            audioAdapter.playSound(AudioEvent.DUCK)
-        }
+        if (!wasDucking && player.isDucking) audioAdapter.playSound(AudioEvent.DUCK)
     }
 
     fun checkCustomCollisions() {
         if (engine.context.isGameOver) return
-
         val playerBox = player.boundingBox
         val items = engine.itemsLayer.objects
 
         for (i in items.indices) {
             val obj = items[i]
             if (!obj.isAlive || obj === player) continue
-
             if (playerBox.intersects(obj.boundingBox)) {
                 if (obj is PixieCollectible) {
                     handleCollectibleCollision(obj)
@@ -130,47 +111,32 @@ class DinoGameCoordinator(
                 }
             }
         }
-
         updateDistanceAndScore()
     }
 
     private fun handleCollectibleCollision(collectible: PixieCollectible) {
-        val collected = collectible.collect(player, engine.context)
-        if (collected) {
-            ProceduralExplosion.trigger(
-                type = ExplosionType.SPARK_HIT,
-                position = collectible.position,
-                pool = engine.particleLayer.pool,
-                activeList = engine.particleLayer.activeParticles,
-                scale = 1.2f
-            )
-            hapticAdapter.trigger(HapticFeedbackType.LIGHT)
-            val wasFull = engine.colorRecovery.progress >= 1.0f
-            engine.colorRecovery.addProgress(0.15f)
-            if (!wasFull && engine.colorRecovery.progress >= 1.0f) {
-                audioAdapter.playSound(AudioEvent.SCORE_MILESTONE)
-            } else {
-                audioAdapter.playSound(AudioEvent.COLLECT)
-            }
-            engine.context.score += 50L
-            onStateChanged?.invoke()
-        }
+        if (!collectible.collect(player, engine.context)) return
+        ProceduralExplosion.trigger(
+            ExplosionType.SPARK_HIT, collectible.position,
+            engine.particleLayer.pool, engine.particleLayer.activeParticles, 1.2f
+        )
+        hapticAdapter.trigger(HapticFeedbackType.LIGHT)
+        val wasFull = engine.colorRecovery.progress >= 1.0f
+        engine.colorRecovery.addProgress(0.15f)
+        val sfx = if (!wasFull && engine.colorRecovery.progress >= 1.0f) AudioEvent.SCORE_MILESTONE else AudioEvent.COLLECT
+        audioAdapter.playSound(sfx)
+        engine.context.score += 50L
+        onStateChanged?.invoke()
     }
 
     private fun handleHazardCollision(hazard: PixieObject) {
         ProceduralExplosion.trigger(
-            type = ExplosionType.SPARK_HIT,
-            position = player.position,
-            pool = engine.particleLayer.pool,
-            activeList = engine.particleLayer.activeParticles,
-            scale = 1.5f
+            ExplosionType.SPARK_HIT, player.position,
+            engine.particleLayer.pool, engine.particleLayer.activeParticles, 1.5f
         )
         hapticAdapter.trigger(HapticFeedbackType.HEAVY)
-        if (hazard is VolcanicMeteor) {
-            audioAdapter.playSound(AudioEvent.EXPLOSION_LARGE)
-        } else {
-            audioAdapter.playSound(AudioEvent.HIT)
-        }
+        val sfx = if (hazard is VolcanicMeteor) AudioEvent.EXPLOSION_LARGE else AudioEvent.HIT
+        audioAdapter.playSound(sfx)
         player.takeDamage(100f, engine.context)
         engine.context.livesLeft--
         hazard.isAlive = false
@@ -184,6 +150,7 @@ class DinoGameCoordinator(
 
     private fun updateDistanceAndScore() {
         engine.context.distance = player.position.x / 10f
+        engine.context.difficulty = (engine.context.distance / 25f).toInt().coerceIn(0, 100)
         engine.context.score = (engine.context.distance * 2f).toLong() + (engine.colorRecovery.progress * 500f).toLong()
 
         val hundred = (engine.context.distance / 100f).toInt()
@@ -193,9 +160,7 @@ class DinoGameCoordinator(
         }
     }
 
-    fun switchWorld(world: WorldDefinition) {
-        restart(world)
-    }
+    fun switchWorld(world: WorldDefinition) = restart(world)
 
     fun restart(world: WorldDefinition = currentWorld) {
         engine.resetGame()

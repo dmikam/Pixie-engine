@@ -6,7 +6,6 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -48,38 +47,24 @@ fun RaptorVictoryDialog(
             shape = RoundedCornerShape(16.dp),
             colors = CardDefaults.cardColors(containerColor = Color(0xFF101B17)),
             border = BorderStroke(2.dp, Color(0xFF00E676)),
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp)
+            modifier = Modifier.fillMaxWidth().padding(16.dp)
         ) {
             Column(
                 modifier = Modifier.padding(24.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 Text(
-                    text = "MISSION ACCOMPLISHED!",
-                    color = Color(0xFF00E676),
-                    fontSize = 18.sp,
-                    fontWeight = FontWeight.Black,
-                    fontFamily = FontFamily.Monospace
+                    text = "MISSION ACCOMPLISHED!", color = Color(0xFF00E676),
+                    fontSize = 18.sp, fontWeight = FontWeight.Black, fontFamily = FontFamily.Monospace
                 )
                 Spacer(modifier = Modifier.height(6.dp))
-                Text(
-                    text = "$levelName Cleared",
-                    color = Color(0xFFB0BEC5),
-                    fontSize = 12.sp
-                )
-
+                Text(text = "$levelName Cleared", color = Color(0xFFB0BEC5), fontSize = 12.sp)
                 Spacer(modifier = Modifier.height(16.dp))
                 VictoryScoreCard(score = score)
-
                 Spacer(modifier = Modifier.height(20.dp))
                 VictoryActionButtons(
-                    hasNextLevel = hasNextLevel,
-                    onNextLevel = onNextLevel,
-                    onGoToHangar = onGoToHangar,
-                    onRestart = onRestart,
-                    onExit = onExit
+                    hasNextLevel = hasNextLevel, onNextLevel = onNextLevel,
+                    onGoToHangar = onGoToHangar, onRestart = onRestart, onExit = onExit
                 )
             }
         }
@@ -99,11 +84,8 @@ private fun VictoryScoreCard(score: Long) {
         ) {
             Text("MISSION SCORE", color = Color(0xFF78909C), fontSize = 11.sp)
             Text(
-                text = "$score",
-                color = Color(0xFF00E5FF),
-                fontSize = 28.sp,
-                fontWeight = FontWeight.Black,
-                fontFamily = FontFamily.Monospace
+                text = "$score", color = Color(0xFF00E5FF),
+                fontSize = 28.sp, fontWeight = FontWeight.Black, fontFamily = FontFamily.Monospace
             )
         }
     }
@@ -121,48 +103,32 @@ private fun VictoryActionButtons(
         onClick = onGoToHangar,
         colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFFF9100)),
         shape = RoundedCornerShape(8.dp),
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(44.dp)
-            .testTag("victory_hangar_button")
+        modifier = Modifier.fillMaxWidth().height(44.dp).testTag("victory_hangar_button")
     ) {
         Icon(Icons.Filled.MonetizationOn, contentDescription = null, tint = Color.Black)
         Spacer(modifier = Modifier.width(6.dp))
         Text("SUPPLY DEPOT & WEAPON SHOP", color = Color.Black, fontWeight = FontWeight.Bold)
     }
 
-    Spacer(modifier = Modifier.height(8.dp))
-
     if (hasNextLevel) {
+        Spacer(modifier = Modifier.height(8.dp))
         Button(
             onClick = onNextLevel,
             colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF00E676)),
             shape = RoundedCornerShape(8.dp),
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(44.dp)
-                .testTag("next_mission_button")
+            modifier = Modifier.fillMaxWidth().height(44.dp).testTag("next_mission_button")
         ) {
             Text("NEXT CAMPAIGN SECTOR", color = Color.Black, fontWeight = FontWeight.Bold)
         }
-        Spacer(modifier = Modifier.height(8.dp))
     }
 
-    OutlinedButton(
-        onClick = onRestart,
-        shape = RoundedCornerShape(8.dp),
-        modifier = Modifier.fillMaxWidth()
-    ) {
+    Spacer(modifier = Modifier.height(8.dp))
+    OutlinedButton(onClick = onRestart, shape = RoundedCornerShape(8.dp), modifier = Modifier.fillMaxWidth()) {
         Text("REPLAY SECTOR")
     }
 
     Spacer(modifier = Modifier.height(8.dp))
-
-    OutlinedButton(
-        onClick = onExit,
-        shape = RoundedCornerShape(8.dp),
-        modifier = Modifier.fillMaxWidth()
-    ) {
+    OutlinedButton(onClick = onExit, shape = RoundedCornerShape(8.dp), modifier = Modifier.fillMaxWidth()) {
         Text("RETURN TO ARCADE HUB")
     }
 }

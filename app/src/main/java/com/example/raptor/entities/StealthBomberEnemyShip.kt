@@ -7,6 +7,7 @@ import com.pixie.engine.core.sprite.AnimationSequence
 import com.pixie.engine.core.sprite.PixelSprite
 import com.pixie.engine.core.weapon.ProjectilePool
 import com.pixie.engine.core.weapon.StandardWeapons
+import com.pixie.engine.core.weapon.Trajectory
 import com.pixie.engine.core.weapon.WeaponSystem
 
 /**
@@ -38,14 +39,21 @@ class StealthBomberEnemyShip(
     override val explosionType: ExplosionType = ExplosionType.GROUND_BLAST
     override val explosionScale: Float = 1.8f
 
+    val trajectory: Trajectory = Trajectory.Linear(angleRad = 1.5707963f)
+
     init {
         setAnimation("default", AnimationSequence.singleFrame(SPRITE_BOMBER))
         playAnimation("default")
     }
 
     override fun calculateFlightVelocity(speed: Float): Vec2 {
-        // Slow, heavy armored advance
-        return Vec2(0f, speed)
+        return trajectory.computeVelocity(
+            currentPosition = position,
+            currentVelocity = velocity,
+            flightTime = flightTime + flightSeed,
+            speed = speed,
+            dt = 0f
+        )
     }
 
     override fun getNextShootCooldown(): Float = 5.5f

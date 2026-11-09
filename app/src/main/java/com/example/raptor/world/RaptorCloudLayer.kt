@@ -57,11 +57,21 @@ class RaptorCloudLayer(
         }
     }
 
+    fun calculateEffectiveSpeed(movingSpeed: Float): Float {
+        val speedMultiplier = if (movingSpeed > 0f) {
+            1f + (movingSpeed / 360f).coerceIn(0f, 1f) * 0.4f
+        } else {
+            1f
+        }
+        return baseCloudSpeed * speedMultiplier
+    }
+
     override fun update(dt: Float, context: GameContext) {
         if (!isEnabled) return
 
+        val effectiveCloudSpeed = calculateEffectiveSpeed(context.currentMovingSpeed)
         for (cloud in clouds) {
-            cloud.y += (baseCloudSpeed * cloud.speedFactor) * dt
+            cloud.y += (effectiveCloudSpeed * cloud.speedFactor) * dt
             if (cloud.y > 340f) {
                 cloud.y = -70f - Random.nextFloat() * 40f
                 cloud.x = Random.nextFloat() * (240f - cloud.width)

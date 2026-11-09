@@ -1,7 +1,15 @@
 package com.example.dinorun.ui
 
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.padding
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
 import com.example.dinorun.entities.DinoPlayer
 import com.pixie.android.audio.AndroidSoundPoolAudioAdapter
@@ -9,6 +17,7 @@ import com.pixie.android.input.ArcadeActionType
 import com.pixie.android.input.ArcadeButtonConfig
 import com.pixie.android.input.ArcadeButtonShape
 import com.pixie.android.input.DualModeInputAdapter
+import com.pixie.android.input.TactileArcadeButton
 import com.pixie.engine.core.ports.AudioEvent
 
 /**
@@ -33,12 +42,8 @@ object DinoControls {
             pressedColor = Color(0xFF424242),
             rimColor = Color(0xCC616161),
             actionType = ArcadeActionType.DUCK,
-            onPressDown = {
-                inputAdapter.setButtonDuck(true)
-            },
-            onPressUp = {
-                inputAdapter.setButtonDuck(false)
-            }
+            onPressDown = { inputAdapter.setButtonDuck(true) },
+            onPressUp = { inputAdapter.setButtonDuck(false) }
         )
     }
 
@@ -67,9 +72,7 @@ object DinoControls {
                     audioAdapter?.playSound(AudioEvent.JUMP)
                 }
             },
-            onPressUp = {
-                inputAdapter.setButtonJump(false)
-            }
+            onPressUp = { inputAdapter.setButtonJump(false) }
         )
     }
 
@@ -90,5 +93,51 @@ object DinoControls {
                 floatingOffset = Offset(260f, 430f)
             )
         )
+    }
+}
+
+/**
+ * Renders the virtual arcade control deck for Dinorun with Duck and Jump buttons.
+ */
+@Composable
+fun DinoVirtualControlDeck(
+    inputAdapter: DualModeInputAdapter,
+    modifier: Modifier = Modifier,
+    audioAdapter: AndroidSoundPoolAudioAdapter? = null,
+    player: DinoPlayer? = null
+) {
+    val duckConfig = remember(inputAdapter, audioAdapter) {
+        DinoControls.createDuckButton(inputAdapter, audioAdapter)
+    }
+    val jumpConfig = remember(inputAdapter, audioAdapter, player) {
+        DinoControls.createJumpButton(inputAdapter, audioAdapter, player)
+    }
+
+    Box(
+        modifier = modifier
+            .fillMaxSize()
+            .padding(horizontal = 16.dp, vertical = 20.dp)
+    ) {
+        Box(
+            modifier = Modifier
+                .align(Alignment.BottomStart)
+                .testTag("duck_button")
+        ) {
+            TactileArcadeButton(
+                config = duckConfig,
+                modifier = Modifier.testTag("duck_button")
+            )
+        }
+
+        Box(
+            modifier = Modifier
+                .align(Alignment.BottomEnd)
+                .testTag("jump_button")
+        ) {
+            TactileArcadeButton(
+                config = jumpConfig,
+                modifier = Modifier.testTag("jump_button")
+            )
+        }
     }
 }

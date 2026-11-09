@@ -25,7 +25,6 @@ import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -35,11 +34,9 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.dinorun.entities.DinoPlayer
 import com.pixie.android.audio.AndroidSoundPoolAudioAdapter
 import com.pixie.android.input.ControlMode
 import com.pixie.android.input.DualModeInputAdapter
-import com.pixie.android.input.TactileArcadeButton
 import com.pixie.engine.core.ports.AudioEvent
 
 @Composable
@@ -279,45 +276,3 @@ private fun DinoColorRecoveryBar(colorProgress: Float, fps: Float) {
     }
 }
 
-@Composable
-fun DinoVirtualControlDeck(
-    inputAdapter: DualModeInputAdapter,
-    modifier: Modifier = Modifier,
-    audioAdapter: AndroidSoundPoolAudioAdapter? = null,
-    player: DinoPlayer? = null
-) {
-    val duckConfig = remember(inputAdapter, audioAdapter) {
-        DinoControls.createDuckButton(inputAdapter, audioAdapter)
-    }
-    val jumpConfig = remember(inputAdapter, audioAdapter, player) {
-        DinoControls.createJumpButton(inputAdapter, audioAdapter, player)
-    }
-
-    Box(
-        modifier = modifier
-            .fillMaxSize()
-            .padding(horizontal = 16.dp, vertical = 20.dp)
-    ) {
-        Box(
-            modifier = Modifier
-                .align(Alignment.BottomStart)
-                .testTag("duck_button")
-        ) {
-            TactileArcadeButton(
-                config = duckConfig,
-                modifier = Modifier.testTag("duck_button")
-            )
-        }
-
-        Box(
-            modifier = Modifier
-                .align(Alignment.BottomEnd)
-                .testTag("jump_button")
-        ) {
-            TactileArcadeButton(
-                config = jumpConfig,
-                modifier = Modifier.testTag("jump_button")
-            )
-        }
-    }
-}

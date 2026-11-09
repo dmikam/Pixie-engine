@@ -10,7 +10,7 @@ To validate the engine across diverse 2D game paradigms, we designed 4 distinct 
 1. **Dinorun** — Horizontal Endless Scroller *(CLOSED / Fully Playable)*
 2. **Raptor** — Vertical Arcade Space/Jet Scroller *(CLOSED / Fully Playable)*
 3. **Arkanoid** — Fixed-Screen Brick Breaker *(CLOSED / Fully Playable)*
-4. **Chiki** — Classic Side-Scrolling Platformer *(Next In Queue - v0.7)*
+4. **Super Pixie** — Classic NES 2D Platformer (Super Mario & Chip 'n Dale 2 Homage) *(Next In Queue - v0.7)*
 
 ---
 
@@ -22,7 +22,7 @@ To validate the engine across diverse 2D game paradigms, we designed 4 distinct 
 | **🦖 Dinorun** | Horizontal Scroller | 5-layer parallax, ColorMatrix recovery, chunk recycling | **CLOSED (Complete)** | v0.3 |
 | **🚀 Raptor** | Vertical Scroller | High-speed vertical camera, bullet pool, procedural particles, synthesized audio | **CLOSED (Complete)** | v0.5 |
 | **🧱 Arkanoid** | Fixed Screen | Static bounds, reflection angles, continuous collision detection (CCD) | **CLOSED (Complete)** | v0.6 |
-| **⚔️ Chiki** | Classic Platformer | Tilemap collisions, gravity arcs, climbing, one-way ledges | **NEXT UP** | v0.7 |
+| **🍄 Super Pixie** | Classic NES Platformer | Tilemap collisions, head-bonk `?` blocks, enemy stomp, crate toss, follow camera | **NEXT UP** | v0.7 |
 
 ---
 
@@ -81,33 +81,34 @@ To validate the engine across diverse 2D game paradigms, we designed 4 distinct 
 
 ---
 
-## 4. ⚔️ Chiki (Classic 2D Platformer) — NEXT UP
-- **Genre:** Classic Side-Scrolling Platformer / Action Adventure
+## 4. 🍄 Super Pixie (Classic NES 2D Platformer) — NEXT UP
+- **Genre:** Classic NES 2D Platformer (Super Mario Bros & Chip 'n Dale 2 Homage)
 - **Status:** `NEXT UP (v0.7)`
 - **Key Mechanics:**
-  - Hero character with physics-driven run, acceleration, jump apex, and ground slide.
-  - Melee attack / magic projectile attack against roaming monsters.
-  - Interactive stage structures: Ladders/climbing ropes, one-way pass-through ledges, spikes, moving platforms.
-  - Collectible treasures (gems, fruit, keys) and stage exit doors.
+  - Hero character with physics-driven run momentum, skid, variable jump cut, and duck.
+  - Head-bonk block interactions: hitting `?` mystery blocks from below recoils the block upward, pops out coins/mushrooms, and turns into an empty solid block; breakable bricks shatter into debris particles.
+  - Stomp combat: landing on roaming enemies from above bounces the hero upward and squashes the enemy.
+  - Interactive Crate Pick-and-Throw (Chip 'n Dale homage): pick up wooden crates or defeated shells, carry them above head, and throw them horizontally to smash blocks and enemies.
+  - Level progression: warp pipes, collectible coins, score multipliers, and flagpole goal exit.
 - **Engine Subsystems to Validate:**
-  - `Bidirectional Follow Camera`: Horizontal and vertical camera tracking with configurable deadzone box and lookahead.
-  - `Tilemap Chunk Engine`: Static and animated tilemaps loaded from matrix definitions with tile collision flags (Solid, OneWay, Hazard, Ladder).
-  - `Platformer Physics Controller`: Jump buffer, coyote time, variable jump cut, and slope handling.
-  - `Character Animation State Machine`: Frame-based sprite strip sequencer (Idle, Run, Jump, Fall, Attack, Hurt, Climb).
+  - `PlatformerFollowViewMode`: Smooth horizontal follow camera with configurable deadzone box, lookahead lead, and stage bounds clamping.
+  - `TilemapChunkLayer`: Grid-based tilemap system supporting Solid tiles, One-Way platforms, Hazard spikes, and Bumpable/Destructible blocks.
+  - `PlatformerPhysicsController`: Jump buffer, coyote time, variable jump cut, momentum acceleration/friction, and head-bonk/stomp recoil vectors.
+  - `Character Animation State Machine`: Frame-based sprite strip sequencer (Idle, Run, Skid, Jump, Fall, Carry, Throw, Duck, Hurt).
 
 ---
 
 ## 📊 Engine Capabilities Cross-Matrix
 
-| Subsystem / Feature | Dinorun (Closed) | Raptor (Closed) | Arkanoid (Closed) | Chiki (Planned) |
+| Subsystem / Feature | Dinorun (Closed) | Raptor (Closed) | Arkanoid (Closed) | Super Pixie (Planned) |
 | :--- | :---: | :---: | :---: | :---: |
-| **Parallax Scrolling** | Horizontal (5 layers) | Vertical (Multi-biome) | Static Arena | Bi-directional |
+| **Parallax Scrolling** | Horizontal (5 layers) | Vertical (Multi-biome) | Static Arena | Horizontal Multi-tier |
 | **Camera ViewMode** | `HorizontalScroller` | `VerticalScroller` | `FixedScreen` | `PlatformerFollow` |
-| **Collision Query** | AABB (Obstacle) | High-Freq Pools | Sub-step CCD | Tilemap + Ledges |
-| **Entity Volume** | 5 - 15 entities | 50 - 150 entities | 30 - 80 bricks | 20 - 40 entities |
-| **Input Scheme** | Pad / Gestures | Direct Touch / Virtual Stick | Touch Drag / Buttons | D-Pad + Jump + Action |
+| **Collision Query** | AABB (Obstacle) | High-Freq Pools | Sub-step CCD | Tilemap + Bump + Stomp |
+| **Entity Volume** | 5 - 15 entities | 50 - 150 entities | 30 - 80 bricks | 25 - 50 entities |
+| **Input Scheme** | Pad / Gestures | Direct Touch / Virtual Stick | Touch Drag / Buttons | D-Pad + Jump + Run/Action |
 | **Color Recovery** | Global ColorMatrix | Shields / Plasma Bloom | Per-Layer Palette | Environmental Relics |
-| **Object Pooling** | Chunk recycling | Bullets & Particles | Particle & Ball pool | Tile & Entity pools |
+| **Object Pooling** | Chunk recycling | Bullets & Particles | Particle & Ball pool | Particles & Projectile Crates |
 
 ---
 

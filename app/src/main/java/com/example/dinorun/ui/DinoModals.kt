@@ -29,29 +29,14 @@ fun DinoModals(
     onExitToMenu: () -> Unit
 ) {
     if (isPaused) {
-        DinoPauseDialog(
-            layerStack = coordinator.engine.layerStack,
-            currentWorld = coordinator.currentWorld,
+        DinoPauseModal(
+            coordinator = coordinator,
+            audioAdapter = audioAdapter,
+            hapticAdapter = hapticAdapter,
             isSoundEnabled = isSoundEnabled,
             isHapticEnabled = isHapticEnabled,
-            onToggleSound = { enabled ->
-                onSoundToggled(enabled)
-                audioAdapter.isMuted = !enabled
-                if (enabled) {
-                    audioAdapter.playSound(AudioEvent.BUTTON_CLICK)
-                }
-            },
-            onToggleHaptic = { enabled ->
-                onHapticToggled(enabled)
-                hapticAdapter.isEnabled = enabled
-                if (enabled) {
-                    hapticAdapter.trigger(HapticFeedbackType.LIGHT)
-                }
-            },
-            onSelectWorld = { world ->
-                coordinator.switchWorld(world)
-                onResume()
-            },
+            onSoundToggled = onSoundToggled,
+            onHapticToggled = onHapticToggled,
             onResume = onResume,
             onRestart = onRestart,
             onExitToMenu = onExitToMenu
@@ -68,3 +53,42 @@ fun DinoModals(
         )
     }
 }
+
+@Composable
+private fun DinoPauseModal(
+    coordinator: DinoGameCoordinator,
+    audioAdapter: AndroidSoundPoolAudioAdapter,
+    hapticAdapter: AndroidHapticAdapter,
+    isSoundEnabled: Boolean,
+    isHapticEnabled: Boolean,
+    onSoundToggled: (Boolean) -> Unit,
+    onHapticToggled: (Boolean) -> Unit,
+    onResume: () -> Unit,
+    onRestart: () -> Unit,
+    onExitToMenu: () -> Unit
+) {
+    DinoPauseDialog(
+        layerStack = coordinator.engine.layerStack,
+        currentWorld = coordinator.currentWorld,
+        isSoundEnabled = isSoundEnabled,
+        isHapticEnabled = isHapticEnabled,
+        onToggleSound = { enabled ->
+            onSoundToggled(enabled)
+            audioAdapter.isMuted = !enabled
+            if (enabled) audioAdapter.playSound(AudioEvent.BUTTON_CLICK)
+        },
+        onToggleHaptic = { enabled ->
+            onHapticToggled(enabled)
+            hapticAdapter.isEnabled = enabled
+            if (enabled) hapticAdapter.trigger(HapticFeedbackType.LIGHT)
+        },
+        onSelectWorld = { world ->
+            coordinator.switchWorld(world)
+            onResume()
+        },
+        onResume = onResume,
+        onRestart = onRestart,
+        onExitToMenu = onExitToMenu
+    )
+}
+
