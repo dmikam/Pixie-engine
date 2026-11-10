@@ -2,7 +2,7 @@
 
 > **Module Scope:** `:pixie-android` (`com.pixie.android.audio.*`, `com.pixie.android.haptic.*`)  
 > **Target Release:** v0.7.0 (Step 6)  
-> **Status:** PENDING  
+> **Status:** COMPLETE  
 > **Compliance:** Low-latency PCM DSP synthesis, zero runtime allocation, AGENTS.md compliance.
 
 ---
@@ -15,7 +15,7 @@ Expand the native procedural audio synthesizer (`RetroAudioSynthesizer` & `Retro
 
 ## 🗺️ Tasks & Checklist
 
-- [ ] **Task 6.1: Extend `AudioEvent` with NES Platformer Events**
+- [x] **Task 6.1: Extend `AudioEvent` with NES Platformer Events**
   - **Target File:** `pixie-engine/src/main/kotlin/com/pixie/engine/core/ports/EnginePorts.kt`
   - **Action:**
     - Add platformer audio event constants:
@@ -30,7 +30,7 @@ Expand the native procedural audio synthesizer (`RetroAudioSynthesizer` & `Retro
       - `CRATE_THROW`: Whoosh frequency sweep.
       - `STAGE_CLEAR`: Triumphant 8-bit fanfare arpeggio upon touching flagpole.
 
-- [ ] **Task 6.2: Implement 8-Bit Waveform Synthesizers in `RetroAudioPresets.kt`**
+- [x] **Task 6.2: Implement 8-Bit Waveform Synthesizers in `RetroAudioPresets.kt`**
   - **Target File:** `pixie-android/src/main/kotlin/com/pixie/android/audio/RetroAudioPresets.kt`
   - **Action:**
     - Implement programmatic PCM generation for the new audio events using square, triangle, and white noise algorithms:
@@ -40,7 +40,7 @@ Expand the native procedural audio synthesizer (`RetroAudioSynthesizer` & `Retro
       - `generateBrickBreak()`: Band-pass filtered noise burst.
       - `generateStageClearFanfare()`: Multi-note melody encoded via frequency-duration note sequence.
 
-- [ ] **Task 6.3: Add Tactile Micro-Haptic Patterns**
+- [x] **Task 6.3: Add Tactile Micro-Haptic Patterns**
   - **Target File:** `pixie-android/src/main/kotlin/com/pixie/android/haptic/AndroidHapticAdapter.kt`
   - **Action:**
     - Provide distinct feedback signatures:
@@ -49,7 +49,7 @@ Expand the native procedural audio synthesizer (`RetroAudioSynthesizer` & `Retro
       - Stomp / Crate throw: Medium punchy pulse (30ms).
       - Brick shatter / Player damage: Heavy tactile jolt (50ms).
 
-- [ ] **Task 6.4: Audio & Haptic Integration Verification**
+- [x] **Task 6.4: Audio & Haptic Integration Verification**
   - **Target File:** `pixie-android/src/test/kotlin/com/pixie/android/audio/RetroAudioSynthesizerTest.kt`
   - **Action:**
     - Verify that all newly declared `AudioEvent` keys have corresponding generation recipes in `RetroAudioPresets` and generate valid PCM WAV buffers without exceptions or NaN samples.

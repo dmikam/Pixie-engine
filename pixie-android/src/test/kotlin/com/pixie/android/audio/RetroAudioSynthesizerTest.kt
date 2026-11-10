@@ -86,6 +86,108 @@ class RetroAudioSynthesizerTest {
         }
     }
 
+    @Test
+    fun `platformer 8-bit waveform generators produce valid PCM samples`() {
+        val buffer = ShortArray(22050)
+        val sampleRate = RetroAudioSynthesizer.SAMPLE_RATE
+
+        // Coin Chime
+        val coinSamples = RetroAudioPresets.generateCoinChime(buffer, sampleRate)
+        assertTrue("Coin chime must write samples", coinSamples > 0)
+        assertTrue("Coin chime must not exceed buffer", coinSamples <= buffer.size)
+
+        // Jump Chirp (Normal & Super)
+        val jumpSamples = RetroAudioPresets.generateJumpChirp(buffer, sampleRate, isSuper = false)
+        assertTrue("Jump chirp must write samples", jumpSamples > 0)
+        val superJumpSamples = RetroAudioPresets.generateJumpChirp(buffer, sampleRate, isSuper = true)
+        assertTrue("Super jump chirp must write samples", superJumpSamples > jumpSamples)
+
+        // Stomp Thud
+        val stompSamples = RetroAudioPresets.generateStompThud(buffer, sampleRate)
+        assertTrue("Stomp thud must write samples", stompSamples > 0)
+
+        // Brick Break
+        val brickSamples = RetroAudioPresets.generateBrickBreak(buffer, sampleRate)
+        assertTrue("Brick break must write samples", brickSamples > 0)
+
+        // Stage Clear Fanfare
+        val fanfareSamples = RetroAudioPresets.generateStageClearFanfare(buffer, sampleRate)
+        assertTrue("Stage clear fanfare must write samples", fanfareSamples > 0)
+
+        // Block Bump
+        val bumpSamples = RetroAudioPresets.generateBlockBump(buffer, sampleRate)
+        assertTrue("Block bump must write samples", bumpSamples > 0)
+
+        // Powerup Spawn & Collect
+        val spawnSamples = RetroAudioPresets.generatePowerupSpawn(buffer, sampleRate)
+        assertTrue("Powerup spawn must write samples", spawnSamples > 0)
+        val collectSamples = RetroAudioPresets.generatePowerupCollect(buffer, sampleRate)
+        assertTrue("Powerup collect must write samples", collectSamples > 0)
+    }
+
+    @Test
+    fun `all platformer AudioEvents have corresponding recipes and generate valid PCM WAV buffers`() {
+        val platformerEvents = listOf(
+            AudioEvent.PLATFORMER_JUMP,
+            AudioEvent.PLATFORMER_JUMP_SUPER,
+            AudioEvent.COIN_DING,
+            AudioEvent.BLOCK_BUMP,
+            AudioEvent.BRICK_BREAK,
+            AudioEvent.POWERUP_SPAWN,
+            AudioEvent.POWERUP_COLLECT,
+            AudioEvent.ENEMY_STOMP,
+            AudioEvent.CRATE_THROW,
+            AudioEvent.STAGE_CLEAR
+        )
+
+        val targetDir = tempFolder.newFolder("platformer_sounds")
+        val sampleRate = RetroAudioSynthesizer.SAMPLE_RATE
+        val buffer = ShortArray(sampleRate * 2)
+
+        for (event in platformerEvents) {
+            val count = RetroAudioPresets.synthesizeEvent(event, buffer, sampleRate)
+            assertTrue("Platformer event $event must write > 0 samples", count > 0)
+            assertTrue("Platformer event $event must fit in buffer", count <= buffer.size)
+
+            var nonZeroFound = false
+            var minVal = Short.MAX_VALUE
+            var maxVal = Short.MIN_VALUE
+            for (i in 0 until count) {
+                val s = buffer[i]
+                if (s.toInt() != 0) nonZeroFound = true
+                if (s < minVal) minVal = s
+                if (s > maxVal) maxVal = s
+            }
+            assertTrue("Platformer event $event must contain non-zero audio content", nonZeroFound)
+            assertTrue("Platformer event $event must have dynamic range", minVal < maxVal)
+
+            val synthesized = RetroAudioSynthesizer.synthesize(event)
+            assertEquals("synthesize sample count matches synthesizeEvent for $event", count, synthesized.size)
+
+            val wavFile = File(targetDir, "${event.name.lowercase()}.wav")
+            RetroAudioSynthesizer.generateAllSounds(targetDir)
+            assertTrue("WAV file for $event must exist", wavFile.exists())
+            assertTrue("WAV file for $event must be larger than 44 bytes", wavFile.length() > 44)
+            validateWavHeader(wavFile)
+        }
+    }
+
+    @Test
+    fun `platformer waveform generators respect constrained buffer boundaries without out-of-bounds`() {
+        val tinyBuffer = ShortArray(64)
+        val sampleRate = RetroAudioSynthesizer.SAMPLE_RATE
+
+        assertEquals(64, RetroAudioPresets.generateCoinChime(tinyBuffer, sampleRate))
+        assertEquals(64, RetroAudioPresets.generateJumpChirp(tinyBuffer, sampleRate, isSuper = false))
+        assertEquals(64, RetroAudioPresets.generateJumpChirp(tinyBuffer, sampleRate, isSuper = true))
+        assertEquals(64, RetroAudioPresets.generateStompThud(tinyBuffer, sampleRate))
+        assertEquals(64, RetroAudioPresets.generateBrickBreak(tinyBuffer, sampleRate))
+        assertEquals(64, RetroAudioPresets.generateBlockBump(tinyBuffer, sampleRate))
+        assertEquals(64, RetroAudioPresets.generatePowerupSpawn(tinyBuffer, sampleRate))
+        assertEquals(64, RetroAudioPresets.generatePowerupCollect(tinyBuffer, sampleRate))
+        assertEquals(64, RetroAudioPresets.generateStageClearFanfare(tinyBuffer, sampleRate))
+    }
+
     private fun validateWavHeader(file: File) {
         val bytes = ByteArray(44)
         FileInputStream(file).use { stream ->

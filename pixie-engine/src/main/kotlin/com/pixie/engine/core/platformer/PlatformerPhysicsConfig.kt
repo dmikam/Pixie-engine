@@ -112,12 +112,15 @@ enum class PlayerAnimationState(
     FALL(isAirborne = true, isGrounded = false, canJump = false),
     DUCK(isAirborne = false, isGrounded = true, canMove = false),
     CARRY(isAirborne = false, isGrounded = true),
+    CARRY_IDLE(isAirborne = false, isGrounded = true),
+    CARRY_WALK(isAirborne = false, isGrounded = true),
+    CARRY_JUMP(isAirborne = true, isGrounded = false, canJump = false),
     THROW(isAirborne = false, isGrounded = true),
     HURT(isAirborne = true, isGrounded = false, canMove = false, canJump = false),
     VICTORY_FLAG(isAirborne = false, isGrounded = true, canMove = false, canJump = false);
 
     val isMovingHorizontally: Boolean
-        get() = this == WALK || this == RUN || this == SKID
+        get() = this == WALK || this == RUN || this == SKID || this == CARRY_WALK
 }
 
 /**

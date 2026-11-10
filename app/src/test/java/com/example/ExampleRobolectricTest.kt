@@ -203,4 +203,31 @@ class ExampleRobolectricTest {
 
         audioAdapter.release()
     }
+
+    @Test
+    fun `android haptic adapter triggers all platformer micro-haptic patterns cleanly`() {
+        val context = ApplicationProvider.getApplicationContext<Context>()
+        val hapticAdapter = com.pixie.android.haptic.AndroidHapticAdapter(context)
+
+        // Fluent chaining
+        hapticAdapter.setEnabled(true)
+            .triggerJump()
+            .triggerCoinCollect()
+            .triggerStomp()
+            .triggerCrateThrow()
+            .triggerBrickShatter()
+            .triggerPlayerDamage()
+
+        // Direct enum triggers
+        for (type in com.pixie.engine.core.ports.HapticFeedbackType.entries) {
+            hapticAdapter.trigger(type)
+        }
+
+        // Disabled state should silently skip without exceptions
+        hapticAdapter.setEnabled(false)
+            .triggerJump()
+            .trigger(com.pixie.engine.core.ports.HapticFeedbackType.PULSE)
+
+        org.junit.Assert.assertFalse("Haptics should be disabled", hapticAdapter.isEnabled)
+    }
 }

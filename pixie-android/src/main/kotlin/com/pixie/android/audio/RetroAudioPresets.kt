@@ -94,6 +94,16 @@ object RetroAudioPresets {
             AudioEvent.GAME_OVER -> synthGameOverTune(out, sampleRate)
             AudioEvent.BUTTON_CLICK -> synthButtonClick(out, sampleRate, duration = 0.025f)
             AudioEvent.DAY_NIGHT_SHIFT -> synthAmbientSweep(out, sampleRate, duration = 0.35f)
+            AudioEvent.PLATFORMER_JUMP -> generateJumpChirp(out, sampleRate, isSuper = false)
+            AudioEvent.PLATFORMER_JUMP_SUPER -> generateJumpChirp(out, sampleRate, isSuper = true)
+            AudioEvent.COIN_DING -> generateCoinChime(out, sampleRate)
+            AudioEvent.BLOCK_BUMP -> generateBlockBump(out, sampleRate)
+            AudioEvent.BRICK_BREAK -> generateBrickBreak(out, sampleRate)
+            AudioEvent.POWERUP_SPAWN -> generatePowerupSpawn(out, sampleRate)
+            AudioEvent.POWERUP_COLLECT -> generatePowerupCollect(out, sampleRate)
+            AudioEvent.ENEMY_STOMP -> generateStompThud(out, sampleRate)
+            AudioEvent.CRATE_THROW -> synthRocketWhoosh(out, sampleRate, duration = 0.15f, startFreq = 300f, endFreq = 120f)
+            AudioEvent.STAGE_CLEAR -> generateStageClearFanfare(out, sampleRate)
         }
     }
 
@@ -412,4 +422,30 @@ object RetroAudioPresets {
         }
         return count
     }
+
+    // --- 8-Bit NES Platformer Waveform Synthesizers ---
+
+    fun generateCoinChime(out: ShortArray, sampleRate: Int): Int =
+        PlatformerAudioWaveforms.generateCoinChime(out, sampleRate)
+
+    fun generateJumpChirp(out: ShortArray, sampleRate: Int, isSuper: Boolean = false): Int =
+        PlatformerAudioWaveforms.generateJumpChirp(out, sampleRate, isSuper)
+
+    fun generateStompThud(out: ShortArray, sampleRate: Int): Int =
+        PlatformerAudioWaveforms.generateStompThud(out, sampleRate)
+
+    fun generateBrickBreak(out: ShortArray, sampleRate: Int): Int =
+        PlatformerAudioWaveforms.generateBrickBreak(out, sampleRate)
+
+    fun generateStageClearFanfare(out: ShortArray, sampleRate: Int): Int =
+        PlatformerAudioWaveforms.generateStageClearFanfare(out, sampleRate)
+
+    fun generateBlockBump(out: ShortArray, sampleRate: Int): Int =
+        PlatformerAudioWaveforms.generateBlockBump(out, sampleRate)
+
+    fun generatePowerupSpawn(out: ShortArray, sampleRate: Int): Int =
+        PlatformerAudioWaveforms.generatePowerupSpawn(out, sampleRate)
+
+    fun generatePowerupCollect(out: ShortArray, sampleRate: Int): Int =
+        PlatformerAudioWaveforms.generatePowerupCollect(out, sampleRate)
 }

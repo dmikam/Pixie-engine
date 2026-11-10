@@ -20,6 +20,33 @@ data class PixelSprite(
         return pixels[y * width + x]
     }
 
+    /**
+     * Returns a new PixelSprite flipped horizontally across the Y axis.
+     */
+    fun flipHorizontal(): PixelSprite {
+        val flippedPixels = IntArray(width * height)
+        for (y in 0 until height) {
+            val rowOffset = y * width
+            for (x in 0 until width) {
+                flippedPixels[rowOffset + (width - 1 - x)] = pixels[rowOffset + x]
+            }
+        }
+        return PixelSprite(width, height, flippedPixels)
+    }
+
+    /**
+     * Returns a new PixelSprite flipped vertically across the X axis.
+     */
+    fun flipVertical(): PixelSprite {
+        val flippedPixels = IntArray(width * height)
+        for (y in 0 until height) {
+            val targetRowOffset = (height - 1 - y) * width
+            val sourceRowOffset = y * width
+            System.arraycopy(pixels, sourceRowOffset, flippedPixels, targetRowOffset, width)
+        }
+        return PixelSprite(width, height, flippedPixels)
+    }
+
     companion object {
         val EMPTY = PixelSprite(1, 1, intArrayOf(0x00000000))
 

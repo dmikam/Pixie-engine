@@ -73,6 +73,12 @@ class PlatformerPhysicsConfigTest {
 
         assertFalse(PlayerAnimationState.VICTORY_FLAG.canMove)
 
+        assertTrue(PlayerAnimationState.CARRY_IDLE.isGrounded)
+        assertFalse(PlayerAnimationState.CARRY_IDLE.isAirborne)
+        assertTrue(PlayerAnimationState.CARRY_WALK.isMovingHorizontally)
+        assertTrue(PlayerAnimationState.CARRY_JUMP.isAirborne)
+        assertFalse(PlayerAnimationState.CARRY_JUMP.isGrounded)
+
         assertTrue(PlayerAnimationState.WALK.isMovingHorizontally)
         assertTrue(PlayerAnimationState.RUN.isMovingHorizontally)
         assertTrue(PlayerAnimationState.SKID.isMovingHorizontally)

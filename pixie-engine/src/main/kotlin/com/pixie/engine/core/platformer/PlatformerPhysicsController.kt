@@ -439,12 +439,16 @@ class PlatformerPhysicsController(
     }
 
     internal fun resolveAnimationState(): PlayerAnimationState {
+        if (isCarrying) {
+            if (!isGrounded) return PlayerAnimationState.CARRY_JUMP
+            if (isDucking) return PlayerAnimationState.DUCK
+            return if (abs(velocity.x) <= 1f) PlayerAnimationState.CARRY_IDLE else PlayerAnimationState.CARRY_WALK
+        }
         if (!isGrounded) {
             return if (velocity.y < 0f) PlayerAnimationState.JUMP_ASCENT else PlayerAnimationState.FALL
         }
         if (isSkidding) return PlayerAnimationState.SKID
         if (isDucking) return PlayerAnimationState.DUCK
-        if (isCarrying && abs(velocity.x) <= 1f) return PlayerAnimationState.CARRY
 
         return when {
             abs(velocity.x) <= 1f -> PlayerAnimationState.IDLE

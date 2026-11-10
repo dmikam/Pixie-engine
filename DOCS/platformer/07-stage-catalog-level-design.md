@@ -15,7 +15,7 @@ Design a complete, handcrafted NES World 1-1 level combining classic Super Mario
 
 ## 🗺️ Tasks & Checklist
 
-- [ ] **Task 7.1: Implement ASCII Stage Parser & Level Matrix Data**
+- [x] **Task 7.1: Implement ASCII Stage Parser & Level Matrix Data**
   - **Target File:** `app/src/main/java/com/example/platformer/world/PlatformerLevelParser.kt`
   - **Action:**
     - Parse multi-line string matrices into `TilemapChunkLayer` and entity spawn lists:

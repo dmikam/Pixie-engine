@@ -101,7 +101,7 @@ open class PixieObject(
         }
     }
 
-    fun getCurrentSprite(): PixelSprite {
+    open fun getCurrentSprite(): PixelSprite {
         val anim = animations[currentAnimationName] ?: animations["default"]
         return anim?.getFrameAt(animationTimeSeconds) ?: PixelSprite.EMPTY
     }

@@ -81,7 +81,12 @@ class AndroidSoundPoolAudioAdapter(val context: Context) : AudioPort {
             AudioEvent.EXPLOSION_SMALL -> 0.95f + (Math.random().toFloat() * 0.15f)
             AudioEvent.EXPLOSION_LARGE -> 0.90f + (Math.random().toFloat() * 0.15f)
             AudioEvent.SHIELD_HIT -> 1.0f + (Math.random().toFloat() * 0.1f)
-            AudioEvent.POWERUP_PICKUP -> 1.0f
+            AudioEvent.POWERUP_PICKUP, AudioEvent.POWERUP_SPAWN -> 1.0f
+            AudioEvent.PLATFORMER_JUMP, AudioEvent.PLATFORMER_JUMP_SUPER -> 1.0f + (Math.random().toFloat() * 0.08f - 0.04f)
+            AudioEvent.COIN_DING, AudioEvent.POWERUP_COLLECT -> 1.0f + (Math.random().toFloat() * 0.06f)
+            AudioEvent.BLOCK_BUMP, AudioEvent.BRICK_BREAK, AudioEvent.ENEMY_STOMP -> 0.95f + (Math.random().toFloat() * 0.15f)
+            AudioEvent.CRATE_THROW -> 1.0f + (Math.random().toFloat() * 0.1f)
+            AudioEvent.STAGE_CLEAR -> 1.0f
         }
 
         val volume = when (event) {

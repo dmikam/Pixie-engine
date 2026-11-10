@@ -2,7 +2,7 @@
 
 > **Module Scope:** `:pixie-engine` / `:app` (`com.example.platformer.entities.crate.*`)  
 > **Target Release:** v0.7.0 (Step 5)  
-> **Status:** PENDING  
+> **Status:** COMPLETE  
 > **Compliance:** Pure Kotlin models, AGENTS.md compliance, files < 500 lines, functions < 50 lines.
 
 ---
@@ -15,7 +15,7 @@ Implement the iconic signature mechanic from **Chip 'n Dale Rescue Rangers 2**: 
 
 ## 🗺️ Tasks & Checklist
 
-- [ ] **Task 5.1: Implement `ThrowableCrate` Entity**
+- [x] **Task 5.1: Implement `ThrowableCrate` Entity**
   - **Target File:** `app/src/main/java/com/example/platformer/entities/crate/ThrowableCrate.kt`
   - **Action:**
     - Create `ThrowableCrate(pos: Vec2)` extending `PixieObject`:
@@ -24,7 +24,7 @@ Implement the iconic signature mechanic from **Chip 'n Dale Rescue Rangers 2**: 
       - While placed: acts as solid obstacle that can be stood upon as a platform.
       - Can also be spawned from hit blocks or scattered across stages.
 
-- [ ] **Task 5.2: Implement Overhead Carry State in Player Controller**
+- [x] **Task 5.2: Implement Overhead Carry State in Player Controller**
   - **Target File:** `app/src/main/java/com/example/platformer/entities/PlatformerPlayer.kt`
   - **Action:**
     - When standing adjacent to a crate and pressing Action / Throw (<kbd>B</kbd>):
@@ -33,7 +33,7 @@ Implement the iconic signature mechanic from **Chip 'n Dale Rescue Rangers 2**: 
       - Player enters `CARRY_IDLE`, `CARRY_WALK`, `CARRY_JUMP` animation states.
       - Jumping physics remain intact while carrying.
 
-- [ ] **Task 5.3: Implement Aimed Projectile Throw Physics**
+- [x] **Task 5.3: Implement Aimed Projectile Throw Physics**
   - **Target File:** `app/src/main/java/com/example/platformer/entities/crate/CrateThrowController.kt`
   - **Action:**
     - When carrying and pressing Action / Throw (<kbd>B</kbd>):
@@ -43,7 +43,7 @@ Implement the iconic signature mechanic from **Chip 'n Dale Rescue Rangers 2**: 
       - Integrate gravity (`gravity = 650f`) while airborne.
       - Play `AudioEvent.CRATE_THROW` sound.
 
-- [ ] **Task 5.4: Implement Crate Impact Smash & Crate-Ducking Defense**
+- [x] **Task 5.4: Implement Crate Impact Smash & Crate-Ducking Defense**
   - **Target File:** `app/src/main/java/com/example/platformer/entities/crate/CrateImpactResolver.kt`
   - **Action:**
     - **Impact Collision:**

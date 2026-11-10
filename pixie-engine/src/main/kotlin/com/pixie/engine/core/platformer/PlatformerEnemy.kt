@@ -200,7 +200,12 @@ open class PlatformerEnemy(
             }
         }
 
+        onStateTransition(oldState, newState)
         onStateChanged?.invoke(oldState, newState)
+    }
+
+    open fun onStateTransition(oldState: PlatformerEnemyState, newState: PlatformerEnemyState) {
+        // Subclasses may hook into state transitions
     }
 
     fun reverseDirection() {
@@ -285,6 +290,9 @@ open class PlatformerEnemy(
 
     override fun update(dt: Float, context: GameContext) {
         if (!isAlive) return
+        animationTimeSeconds += dt
+        previousPosition = position
+        onContextChanged(context)
 
         when (state) {
             PlatformerEnemyState.STOMPED -> {

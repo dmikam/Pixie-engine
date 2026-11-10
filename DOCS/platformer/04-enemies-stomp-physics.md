@@ -2,7 +2,7 @@
 
 > **Module Scope:** `:pixie-engine` / `:app` (`com.example.platformer.entities.*`)  
 > **Target Release:** v0.7.0 (Step 4)  
-> **Status:** PENDING  
+> **Status:** COMPLETE (4/4 Tasks Complete)  
 > **Compliance:** Pure Kotlin models, AGENTS.md compliance, files < 500 lines, functions < 50 lines.
 
 ---
@@ -24,7 +24,7 @@ Implement classic NES platformer enemies: Goomba-style mushroom walkers and Koop
       - Reverse direction upon colliding with solid walls or reaching stage borders.
       - State machine: `PATROL`, `STOMPED`, `SHELL_STATIONARY`, `SHELL_SLIDING`, `DEFEATED_FALL`.
 
-- [ ] **Task 4.2: Implement Goomba Mushroom Walker**
+- [x] **Task 4.2: Implement Goomba Mushroom Walker**
   - **Target File:** `app/src/main/java/com/example/platformer/entities/GoombaEnemy.kt`
   - **Action:**
     - 2-frame walking wobble animation (`16x16` pixel sprite).
@@ -34,7 +34,7 @@ Implement classic NES platformer enemies: Goomba-style mushroom walkers and Koop
       - Halt movement and remain squashed for `0.4f` seconds before despawning.
       - Award 100 points.
 
-- [ ] **Task 4.3: Implement Koopa Shell Turtle & Kick Physics**
+- [x] **Task 4.3: Implement Koopa Shell Turtle & Kick Physics**
   - **Target File:** `app/src/main/java/com/example/platformer/entities/KoopaEnemy.kt`
   - **Action:**
     - 2-frame walking turtle animation with shell.
@@ -43,7 +43,7 @@ Implement classic NES platformer enemies: Goomba-style mushroom walkers and Koop
     - Sliding shell rebounds off solid walls, breaks `BRICK` blocks, and defeats all enemies in its path.
     - Second stomp stops sliding shell.
 
-- [ ] **Task 4.4: Stomp vs Lateral Hit Collision Resolver**
+- [x] **Task 4.4: Stomp vs Lateral Hit Collision Resolver**
   - **Target File:** `app/src/main/java/com/example/platformer/world/PlatformerCombatSystem.kt`
   - **Action:**
     - Detect relative collision geometry:

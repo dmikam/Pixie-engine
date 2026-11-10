@@ -38,7 +38,19 @@ enum class AudioEvent {
     EXPLOSION_SMALL,
     EXPLOSION_LARGE,
     SHIELD_HIT,
-    POWERUP_PICKUP
+    POWERUP_PICKUP,
+
+    // NES Platformer Audio Events
+    PLATFORMER_JUMP,
+    PLATFORMER_JUMP_SUPER,
+    COIN_DING,
+    BLOCK_BUMP,
+    BRICK_BREAK,
+    POWERUP_SPAWN,
+    POWERUP_COLLECT,
+    ENEMY_STOMP,
+    CRATE_THROW,
+    STAGE_CLEAR
 }
 
 interface AudioPort {
@@ -55,7 +67,13 @@ enum class HapticFeedbackType {
     LIGHT,
     MEDIUM,
     HEAVY,
-    DOUBLE_PULSE
+    DOUBLE_PULSE,
+
+    // Platformer tactile micro-haptic patterns
+    TICK,
+    DOUBLE_TAP,
+    PULSE,
+    JOLT
 }
 
 interface HapticPort {
@@ -63,6 +81,13 @@ interface HapticPort {
         get() = true
         set(value) {}
     fun trigger(type: HapticFeedbackType)
+
+    fun triggerJump(): HapticPort = apply { trigger(HapticFeedbackType.TICK) }
+    fun triggerCoinCollect(): HapticPort = apply { trigger(HapticFeedbackType.DOUBLE_TAP) }
+    fun triggerStomp(): HapticPort = apply { trigger(HapticFeedbackType.PULSE) }
+    fun triggerCrateThrow(): HapticPort = apply { trigger(HapticFeedbackType.PULSE) }
+    fun triggerBrickShatter(): HapticPort = apply { trigger(HapticFeedbackType.JOLT) }
+    fun triggerPlayerDamage(): HapticPort = apply { trigger(HapticFeedbackType.JOLT) }
 }
 
 /**
